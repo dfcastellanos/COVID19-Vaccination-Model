@@ -140,6 +140,7 @@ app = dash.Dash(
     title="Statistical vaccination model",
 )
 
+server = app.server
 
 app.layout = html.Div(
     id="app-container",
