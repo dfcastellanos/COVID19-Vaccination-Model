@@ -1,18 +1,18 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+import dash_bootstrap_components as dbc
+from dash.dependencies import Input, Output, State
 import plotly.express as px
 import plotly.io as pio
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
 import numpy as np
 import pandas as pd
 from datetime import datetime as dt
 
 
-import model
+from model import run_model_sampling
 
 
 # pylint: disable=E0102
@@ -54,29 +54,33 @@ def get_country_data():
 avail_countries, country_data = get_country_data()
 
 
+tab_style = {"padding-top": 7}
+
+tab_selected_style = {"padding-top": 7}
+
+tabs_styles = {"height": "44px"}
+
+
 def description_card():
 
     return html.Div(
         id="description-card",
         children=[
-            html.H5("Monte Carlo model of vaccination campaings"),
-            html.H3(
-                "Welcome to the Dashboard of the Monte Carlo model of vaccination campaings"
-            ),
             html.Div(
                 id="intro",
-                children="Add here a brief description about these controls.",
+                # children="Here you can tune the population views on vaccines, the vaccines production rates, and the Monte Carlo sampling parameters.",
             ),
+            html.Br(),
         ],
     )
 
 
-def generate_control_card():
+def generate_population_controls():
 
     return html.Div(
-        id="control-card",
+        id="population-controls",
         children=[
-            html.P("Population views on vaccines"),
+            # html.P("Population views on vaccines"),
             html.Div(id="output-p-yes-value"),
             dcc.Slider(
                 id="slider-p-yes",
@@ -109,6 +113,15 @@ def generate_control_card():
                 step=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+        ],
+    )
+
+
+def generate_country_and_date_controls():
+
+    return html.Div(
+        id="contry-date-controls",
+        children=[
             html.Br(),
             html.P("Date range"),
             dcc.DatePickerRange(
@@ -131,14 +144,73 @@ def generate_control_card():
     )
 
 
-app = dash.Dash(
-    __name__,
-    meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
-    external_scripts=[
-        "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
-    ],
-    title="Statistical vaccination model",
-)
+def generate_plots_section():
+
+    return html.Div(
+        id="plot_header",
+        children=[
+            dcc.Graph(
+                id="plot_grid",
+                style={
+                    # "width": "130vh",
+                    # "height": "50vh",
+                    # "display": "inline-block",
+                    # "overflow": "hidden",
+                    # "position": "absolute",
+                    # "top": "50%",
+                    # "left": "50%",
+                    # "transform": "translate(-50%, -50%)"
+                },
+            ),
+        ],
+    )
+
+
+def generate_model_explanation():
+
+    s1 = """                        
+        The goal of the model is to capture the **main characteristics** of the **evolution** of an ongoing **vaccination campaign** on a specific population. To this end, the population is described as a sample of discrete **random variables** whose values change according to some **evolution rules**. The model is sampled using the **Monte Carlo method**, i.e., generating random numbers, which are used to simulate the evolution of the random variables over time.
+        """
+    s2 = """                        
+        The **population** is segmented into **three groups**, depending on their views on vaccines:
+        
+        -   **Pro-vaccines**: they take the vaccine as soon as they have the chance
+        -   **Anti-vaccines**: they will never take a vaccine
+        -   **Agnostic**: they will initially hesitate, but given enough social pressure, they will take it
+        """
+    s3 = """ 
+        The **evolution of the vaccination** campaign is simulated by applying the following **rules** iteratively where **one iteration** corresponds to **one day**:
+        
+        1.  Every **non-vaccinated person** in the pro-vaccines group for whom a vaccine is available **becomes vaccinated**. A vaccine becomes available with a probability given by the number of vaccines in stock divided by the population size. That probability is multiplied by 2/7 to account for vaccinations occurring only two days a week, giving an effective per-day probability.
+        2.  Every **agnostic person** might **become pro-vaccines** with a probability equal to the number of vaccinated people divided by the population size. This probability is multiplied by a factor, denoted as pressure, which allows for tuning the strength of this effect. This mechanism is a proxy for **social pressure**, i.e., the higher the fraction of vaccinated people is, the higher the influence on non-vaccinated ones to do the same.
+        3.  The **stock of vaccines decreases** according to the number of people vaccinated during the day. Care is taken that, each day, no more vaccines than the available stock can be applied.
+        """
+    s4 = """                        
+        The **stock of vaccines is increased** once a week. We distinguish two stages:
+        
+        1.  Initially, the number of vaccines added to the stock each week **grows exponentially**, representing a fast production growth to meet the demand.
+        2.  When a specific **maximum delivery capacity** is reached, that amount does not grow anymore. Every subsequent week, that amount of vaccines are added to the existing stock.
+        """
+    return html.Div(
+        id="text-explanation",
+        children=[
+            html.Br(),
+            dcc.Markdown(s1),
+            html.Br(),
+            dcc.Markdown(s2),
+            html.Br(),
+            dcc.Markdown(s3),
+            html.Br(),
+            dcc.Markdown(s4),
+        ],
+    )
+
+
+def generate_model_help():
+    return
+
+
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = app.server
 
@@ -149,17 +221,38 @@ app.layout = html.Div(
         html.Div(
             id="banner",
             className="banner",
-            children=[html.Img(src=app.get_asset_url("plotly_logo.png"))],
+            children=[html.H5("Monte Carlo model of vaccination campaings")],
         ),
         # Left column
         html.Div(
             id="left-column",
-            className="four columns",
-            children=[description_card(), generate_control_card()]
-            + [
-                html.Div(
-                    ["initial child"], id="output-clientside", style={"display": "none"}
-                )
+            className="three columns",
+            children=[
+                description_card(),
+                dcc.Tabs(
+                    children=[
+                        dcc.Tab(
+                            label="Population",
+                            children=[html.Br(), generate_population_controls()],
+                            style=tab_style,
+                            selected_style=tab_selected_style,
+                        ),
+                        dcc.Tab(
+                            label="Vaccines",
+                            children=[],
+                            style=tab_style,
+                            selected_style=tab_selected_style,
+                        ),
+                        dcc.Tab(
+                            label="Sampling",
+                            children=[],
+                            style=tab_style,
+                            selected_style=tab_selected_style,
+                        ),
+                    ],
+                    style=tabs_styles,
+                ),
+                generate_country_and_date_controls(),
             ],
         ),
         # Right column
@@ -167,26 +260,37 @@ app.layout = html.Div(
             id="right-column",
             className="eight columns",
             children=[
-                # plots section
-                html.Div(
-                    id="plot_header",
+                dcc.Tabs(
                     children=[
-                        html.B("Model results"),
-                        html.Hr(),
-                        dcc.Graph(
-                            id="plot_grid",
-                            style={
-                                "width": "100vh",
-                                "height": "100vh",
-                                # "display": "inline-block",
-                                # "overflow": "hidden",
-                                "position": "absolute",
-                                # "top": "50%",
-                                # "left": "50%",
-                                # "transform": "translate(-50%, -50%)"
-                            },
+                        dcc.Tab(
+                            label="Results",
+                            children=[
+                                generate_plots_section(),
+                                dcc.Loading(
+                                    id="ls-loading-2",
+                                    children=[
+                                        html.Div([html.Div(id="ls-loading-output-2")])
+                                    ],
+                                    type="circle",
+                                ),
+                            ],
+                            style=tab_style,
+                            selected_style=tab_selected_style,
+                        ),
+                        dcc.Tab(
+                            label="Model explanation",
+                            children=[generate_model_explanation()],
+                            style=tab_style,
+                            selected_style=tab_selected_style,
+                        ),
+                        dcc.Tab(
+                            label="Help",
+                            children=[generate_model_help()],
+                            style=tab_style,
+                            selected_style=tab_selected_style,
                         ),
                     ],
+                    style=tabs_styles,
                 ),
             ],
         ),
@@ -194,116 +298,156 @@ app.layout = html.Div(
 )
 
 
-def add_line(fig, s, color, name, row, col):
+def add_line(fig, x, y, color, name=None, row=1, col=1, fill="none", width=2):
+
+    # plot line
+
+    data = dict(
+        x=x,
+        y=y,
+        mode="lines",
+        fill=fill,
+        line_shape="spline",
+        showlegend=False,
+        line=dict(color=color, width=width),
+    )
+
+    if name is not None:
+        data["legendgroup"] = name
+        data["name"] = name
 
     fig.add_trace(
-        go.Scatter(
-            x=s.index,
-            y=s,
-            mode="lines",
-            legendgroup=name,
-            name=name,
-            line_shape="spline",
-            showlegend=False,
-            line=dict(color=color),
-        ),
+        go.Scatter(data),
         row=row,
         col=col,
     )
 
-    fig.add_annotation(
-        xref="paper",
-        x=s.index[-1],
-        y=s[-1],
-        xanchor="left",
-        yanchor="middle",
-        text=name,
-        font=dict(family="Arial", size=14, color=color),
-        showarrow=False,
-        row=row,
-        col=col,
-    )
+    # write annotation
+    if name is not None:
+
+        fig.add_annotation(
+            xref="paper",
+            x=x[-1],
+            y=y[-1],
+            xanchor="left",
+            yanchor="middle",
+            text=name,
+            font=dict(family="Arial", size=14, color=color),
+            showarrow=False,
+            row=row,
+            col=col,
+        )
 
     return fig
 
 
 @app.callback(
     Output("plot_grid", "figure"),
-    [
-        Input("slider-p-yes", "value"),
-        Input("slider-p-hard-no", "value"),
-        Input("slider-pressure", "value"),
-        Input("date-picker-select", "start_date"),
-        Input("date-picker-select", "end_date"),
-        Input("country-select", "value"),
-    ],
+    Output("ls-loading-output-2", "children"),
+    # population parameters
+    Input("slider-p-yes", "value"),
+    Input("slider-p-hard-no", "value"),
+    Input("slider-pressure", "value"),
+    # countries and dates
+    Input("date-picker-select", "start_date"),
+    Input("date-picker-select", "end_date"),
+    Input("country-select", "value"),
 )
 def update_figures(
     p_yes, p_hard_no, pressure, start_date, end_date, selected_countries
 ):
 
+    #
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=(
+            "People vaccinated per hundred",
+            "Daily vaccinations per million",
+        ),
+    )
+
+    # ---- sample the model with the selected parameters ----
+
     start_date = dt.strptime(start_date.split("T")[0], "%Y-%m-%d")
     end_date = dt.strptime(end_date.split("T")[0], "%Y-%m-%d")
 
-    N = 5000
+    n_rep = 100
+    N = 2000
 
     # sliders use values 0-100
-    p_yes /= 100
-    p_hard_no /= 100
-    pressure /= 100
+    p_yes_values = np.random.uniform(p_yes * 0.6, p_yes * 1.1, size=n_rep) / 100
+    p_hard_no_values = (
+        np.random.uniform(p_hard_no * 0.6, p_hard_no * 1.1, size=n_rep) / 100
+    )
+    pressure_values = (
+        np.random.uniform(pressure * 0.6, pressure * 1.1, size=n_rep) / 100
+    )
 
     max_delivery = 0.05
     a = 0.0007
     F = lambda t: min(a * np.exp(0.2 * t / 7), max_delivery) * N
 
-    nv_purchased = 1.5 * N
+    # np.random.seed(1234567)
 
-    data = model.run(
-        p_yes, p_hard_no, pressure, nv_purchased, start_date, end_date, F, N
+    data = run_model_sampling(
+        p_yes_values, p_hard_no_values, pressure_values, start_date, end_date, F, N
     )
 
-    fig = make_subplots(
-        rows=2,
-        cols=2,
-        subplot_titles=(
-            "People vaccinated per hundred",
-            "Daily vaccinations per million",
-            "Total dosis received / purchsed",
-            "Dosis in stock per hundred",
-        ),
+    # ---- plot model results ----
+
+    colors = px.colors.qualitative.Safe
+
+    fig = add_line(fig, data["pv_dates"], data["pv_mean"], "royalblue", "Model", 1, 1)
+    fig = add_line(
+        fig, data["pv_dates"], data["pv_upper"], colors[0], None, 1, 1, width=0
+    )
+    fig = add_line(
+        fig,
+        data["pv_dates"],
+        data["pv_lower"],
+        colors[0],
+        None,
+        1,
+        1,
+        width=0,
+        fill="tonexty",
     )
 
-    g = data["people_fully_vaccinated_per_hundred"]
-    fig = add_line(fig, g, "royalblue", "Model", 1, 1)
+    fig = add_line(fig, data["dv_dates"], data["dv_mean"], "royalblue", "Model", 1, 2)
+    fig = add_line(
+        fig, data["dv_dates"], data["dv_upper"], colors[0], None, 1, 2, width=0
+    )
 
-    # multiply by 2 to take into account that in the real world data, for most
-    # of the countries (at least for EU) a full vaccination counts as
-    # 2 units
-    g = data["daily_vaccinations_per_million"].resample("6D").agg(np.mean) * 2
-    fig = add_line(fig, g, "royalblue", "Model", 1, 2)
+    data["dv_lower"][data["dv_lower"] < 0] = 0.0
+    fig = add_line(
+        fig,
+        data["dv_dates"],
+        data["dv_lower"],
+        colors[0],
+        None,
+        1,
+        2,
+        width=0,
+        fill="tonexty",
+    )
 
-    g = data["ratio_vaccines_received_over_purchased"]
-    fig = add_line(fig, g, "royalblue", "Model", 2, 1)
-
-    g = data["vaccines_avail_per_hundred"]
-    fig = add_line(fig, g, "royalblue", "Model", 2, 2)
-
-    colors = px.colors.qualitative.Pastel
+    # ----- add curves with data from the selected countries ----
 
     df = country_data["people_fully_vaccinated_per_hundred"]
     for i, country in enumerate(selected_countries):
         g = df[country].dropna()
-        fig = add_line(fig, g, colors[i], country, 1, 1)
+        fig = add_line(fig, g.index, g, colors[i + 1], country, 1, 1)
 
     df = country_data["daily_vaccinations_per_million"]
     for i, country in enumerate(selected_countries):
         g = df[country].dropna()
-        fig = add_line(fig, g, colors[i], country, 1, 2)
+        fig = add_line(fig, g.index, g, colors[i + 1], country, 1, 2)
 
     fig.update_yaxes(range=[0, 100], row=1, col=1)
-    fig.update_layout(height=700, width=900)
+    # fig.update_layout(height=400, width=1100)
 
-    return fig
+    return fig, None
 
 
 @app.callback(
@@ -311,7 +455,7 @@ def update_figures(
     Input(component_id="slider-p-yes", component_property="value"),
 )
 def update_output_div(input_value):
-    return r"Completely favorable: {0:.0f}%".format(input_value)
+    return r"Pro-vaccines: {0:.0f}%".format(input_value)
 
 
 @app.callback(
@@ -319,7 +463,7 @@ def update_output_div(input_value):
     Input(component_id="slider-p-hard-no", component_property="value"),
 )
 def update_output_div(input_value):
-    return r"Absolutely against: {0:.0f}%".format(input_value)
+    return r"Anti-vaccines: {0:.0f}%".format(input_value)
 
 
 @app.callback(

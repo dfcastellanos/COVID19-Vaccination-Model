@@ -1,11 +1,9 @@
 import numpy as np
 import pandas as pd
-from datetime import timedelta
+import scipy.stats as st
 
 
-def run(
-    p_yes, p_no_hard, pressure, cum_number_vac_purchased, start_date, end_date, F, N
-):
+def run_single_realization(p_yes, p_no_hard, pressure, max_day_number, F, N):
 
     assert p_yes + p_no_hard < 1.0
 
@@ -21,15 +19,16 @@ def run(
 
     nv_available = 0
     cum_number_vac_received = 0
-    vaccine_already = np.repeat(False, N)
-    date = start_date
     day_number = 0
-    data = pd.DataFrame()
+    vaccine_already = np.repeat(False, N)
 
-    while date <= end_date:
+    people_fully_vaccinated_per_hundred = list()
+    daily_vaccinations_per_million = list()
+
+    while day_number < max_day_number:
 
         # upated vaccines
-        if day_number % 7 == 0.0 and cum_number_vac_received < cum_number_vac_purchased:
+        if day_number % 7 == 0.0:
             # approx. number of pfizer for spain
             # max_delivery = 0.05
             # a = 0.0007
@@ -78,22 +77,65 @@ def run(
         z = np.random.uniform(size=n_no_soft) < fract_pop_vaccinated * pressure
         C[w_no_soft] = np.where(z, 2, 1)
 
-        date += timedelta(days=1)
         day_number += 1
 
-        data_today = pd.DataFrame(
-            {
-                "date": date,
-                "people_fully_vaccinated_per_hundred": fract_pop_vaccinated * 100,
-                "vaccines_avail_per_hundred": nv_available * 100 / N,
-                "ratio_vaccines_received_over_purchased": cum_number_vac_received
-                / cum_number_vac_purchased,
-                "daily_vaccinations_per_million": np.sum(daily_vaccinations) * 1e6 / N,
-            },
-            index=[0],
-        )
-        data = pd.concat([data, data_today])
+        people_fully_vaccinated_per_hundred.append(fract_pop_vaccinated * 100)
+        daily_vaccinations_per_million.append(np.sum(daily_vaccinations) * 1e6 / N)
 
-    data = data.set_index("date")
+    return people_fully_vaccinated_per_hundred, daily_vaccinations_per_million
+
+
+def run_model_sampling(
+    p_yes_values, p_hard_no_values, pressure_values, start_date, end_date, F, N
+):
+
+    assert len(p_yes_values) == len(p_hard_no_values)
+    assert len(p_hard_no_values) == len(pressure_values)
+
+    dates = pd.date_range(start_date, end_date, freq="1d")
+    max_days = len(dates)
+
+    pv = list()
+    dv = list()
+    for p_yes, p_hard_no, pressure in zip(
+        p_yes_values, p_hard_no_values, pressure_values
+    ):
+        pv_, dv_ = run_single_realization(p_yes, p_hard_no, pressure, max_days, F, N)
+        pv.append(pv_)
+        dv.append(dv_)
+    pv = np.vstack(pv)
+    dv = np.vstack(dv)
+
+    # build a DataFrame and perform a weekly average of the daily doses. Then, get the data back into a numpy array.
+    # Note: the average is over a time window, but simulation repetitions are not mixed here
+    filtered_dv_df = pd.DataFrame(dv.T, index=dates).reindex(
+        pd.date_range(start=start_date, end=end_date, freq="7d")
+    )
+    dv = filtered_dv_df.values.T
+    dates_dv = filtered_dv_df.index
+
+    # multiply by 2 to take into account that in the real world data, for most
+    # of the countries (at least for EU) a full vaccination counts as
+    # 2 units
+    dv *= 2
+
+    # get confidence intervals for each date, computed accros repetitions
+    fun = lambda x: st.t.interval(0.95, len(x) - 1, loc=np.mean(x), scale=np.std(x))
+    pv_CI = np.vstack(list(map(fun, pv.T))).T
+    dv_CI = np.vstack(list(map(fun, dv.T))).T
+
+    pv_mean = pv.mean(axis=0)
+    dv_mean = dv.mean(axis=0)
+
+    data = {
+        "pv_dates": dates,
+        "pv_mean": pv_mean,
+        "pv_upper": pv_CI[1],
+        "pv_lower": pv_CI[0],
+        "dv_dates": dates_dv,
+        "dv_mean": dv_mean,
+        "dv_upper": dv_CI[1],
+        "dv_lower": dv_CI[0],
+    }
 
     return data
