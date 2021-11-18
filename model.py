@@ -85,21 +85,14 @@ def run_single_realization(p_yes, p_no_hard, pressure, max_day_number, F, N):
     return people_fully_vaccinated_per_hundred, daily_vaccinations_per_million
 
 
-def run_model_sampling(
-    p_yes_values, p_hard_no_values, pressure_values, start_date, end_date, F, N
-):
-
-    assert len(p_yes_values) == len(p_hard_no_values)
-    assert len(p_hard_no_values) == len(pressure_values)
+def run_model_sampling(params_sets, start_date, end_date, F, N):
 
     dates = pd.date_range(start_date, end_date, freq="1d")
     max_days = len(dates)
 
     pv = list()
     dv = list()
-    for p_yes, p_hard_no, pressure in zip(
-        p_yes_values, p_hard_no_values, pressure_values
-    ):
+    for p_yes, p_hard_no, pressure in params_sets:
         pv_, dv_ = run_single_realization(p_yes, p_hard_no, pressure, max_days, F, N)
         pv.append(pv_)
         dv.append(dv_)
@@ -139,3 +132,24 @@ def run_model_sampling(
     }
 
     return data
+
+
+def sample_param_combinations(p_yes_bounds, p_hard_no_bounds, pressure_bounds, n_rep):
+
+    params_combinations = list()
+    p_soft_no_values = list()
+    n = 0
+    while len(params_combinations) < n_rep:
+        if n > n_rep * 10:
+            return None, None
+        else:
+            p_yes = np.random.uniform(p_yes_bounds[0], p_yes_bounds[1])
+            p_hard_no = np.random.uniform(p_hard_no_bounds[0], p_hard_no_bounds[1])
+            if p_yes + p_hard_no > 1.0:
+                n += 1
+                continue
+            pressure = np.random.uniform(pressure_bounds[0], pressure_bounds[1])
+            params_combinations.append([p_yes, p_hard_no, pressure])
+            p_soft_no_values.append(1 - (p_yes + p_hard_no))
+
+    return params_combinations, p_soft_no_values

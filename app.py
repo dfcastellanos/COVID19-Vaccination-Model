@@ -12,7 +12,7 @@ import pandas as pd
 from datetime import datetime as dt
 
 
-from model import run_model_sampling
+from model import run_model_sampling, sample_param_combinations
 
 
 # pylint: disable=E0102
@@ -82,33 +82,35 @@ def generate_population_controls():
         children=[
             # html.P("Population views on vaccines"),
             html.Div(id="output-p-yes-value"),
-            dcc.Slider(
+            dcc.RangeSlider(
                 id="slider-p-yes",
                 min=0.0,
                 max=100,
-                value=70,
+                value=[60, 70],
+                allowCross=False,
                 marks={"0": "0%", "100": "100%"},
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             html.Div(id="output-p-hard-no-value"),
-            dcc.Slider(
+            dcc.RangeSlider(
                 id="slider-p-hard-no",
                 min=0.0,
                 max=100,
-                value=10,
+                value=[5, 15],
                 marks={"0": "0%", "100": "100%"},
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            html.Div(id="pop-controls-error-msg", style={"color": "red"}),
             html.Div(id="output-p-soft-no-value"),
             html.Br(),
             html.Div(id="output-pressure-value"),
-            dcc.Slider(
+            dcc.RangeSlider(
                 id="slider-pressure",
                 min=0.0,
                 max=10,
-                value=5,
+                value=[2, 5],
                 marks={"0": "0%", "10": "10%"},
                 step=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
@@ -221,7 +223,12 @@ app.layout = html.Div(
         html.Div(
             id="banner",
             className="banner",
-            children=[html.H5("Monte Carlo model of vaccination campaings")],
+            children=[
+                html.H3(
+                    "Monte Carlo model of COVID-19 vaccination",
+                    style={"color": "#2c8cff"},
+                ),
+            ],
         ),
         # Left column
         html.Div(
@@ -344,6 +351,9 @@ def add_line(fig, x, y, color, name=None, row=1, col=1, fill="none", width=2):
 @app.callback(
     Output("plot_grid", "figure"),
     Output("ls-loading-output-2", "children"),
+    # population message: error and agnostic percentage
+    Output("pop-controls-error-msg", "children"),
+    Output("pop-controls-error-msg", "style"),
     # population parameters
     Input("slider-p-yes", "value"),
     Input("slider-p-hard-no", "value"),
@@ -354,7 +364,12 @@ def add_line(fig, x, y, color, name=None, row=1, col=1, fill="none", width=2):
     Input("country-select", "value"),
 )
 def update_figures(
-    p_yes, p_hard_no, pressure, start_date, end_date, selected_countries
+    p_yes_bounds,
+    p_hard_no_bounds,
+    pressure_bounds,
+    start_date,
+    end_date,
+    selected_countries,
 ):
 
     #
@@ -376,13 +391,25 @@ def update_figures(
     N = 2000
 
     # sliders use values 0-100
-    p_yes_values = np.random.uniform(p_yes * 0.6, p_yes * 1.1, size=n_rep) / 100
-    p_hard_no_values = (
-        np.random.uniform(p_hard_no * 0.6, p_hard_no * 1.1, size=n_rep) / 100
+
+    params_combinations, p_soft_no_values = sample_param_combinations(
+        np.array(p_yes_bounds) / 100,
+        np.array(p_hard_no_bounds) / 100,
+        np.array(pressure_bounds) / 100,
+        n_rep,
     )
-    pressure_values = (
-        np.random.uniform(pressure * 0.6, pressure * 1.1, size=n_rep) / 100
-    )
+
+    if params_combinations is None:
+        return fig, None, "The pertentages above are too high", {"color": "red"}
+
+    # p_yes_values = np.random.uniform(p_yes_bounds[0], p_yes_bounds[1], size=n_rep) / 100
+
+    # p_hard_no_values = (
+    #     np.random.uniform(p_hard_no_bounds[0], p_hard_no_bounds[1], size=n_rep) / 100
+    # )
+    # pressure_values = (
+    #     np.random.uniform(pressure_bounds[0], pressure_bounds[1], size=n_rep) / 100
+    # )
 
     max_delivery = 0.05
     a = 0.0007
@@ -390,9 +417,7 @@ def update_figures(
 
     # np.random.seed(1234567)
 
-    data = run_model_sampling(
-        p_yes_values, p_hard_no_values, pressure_values, start_date, end_date, F, N
-    )
+    data = run_model_sampling(params_combinations, start_date, end_date, F, N)
 
     # ---- plot model results ----
 
@@ -447,41 +472,51 @@ def update_figures(
     fig.update_yaxes(range=[0, 100], row=1, col=1)
     # fig.update_layout(height=400, width=1100)
 
-    return fig, None
+    p_soft_no_values = 100 * np.array(p_soft_no_values)
+    a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
+    b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
+    a_str = "{0:.0f}".format(a)
+    b_str = "{0:.0f}".format(b)
+    if abs(a - b) < 1:
+        msg_agnostics_pct = "Agnosticts: " + a_str + "%"
+    else:
+        msg_agnostics_pct = "Agnosticts: " + a_str + " - " + b_str + "%"
+
+    return fig, None, msg_agnostics_pct, dict()
 
 
 @app.callback(
     Output(component_id="output-p-yes-value", component_property="children"),
     Input(component_id="slider-p-yes", component_property="value"),
 )
-def update_output_div(input_value):
-    return r"Pro-vaccines: {0:.0f}%".format(input_value)
+def update_output_div(values):
+    return f"Pro-vaccines: {values[0]} - {values[1]}%"
 
 
 @app.callback(
     Output(component_id="output-p-hard-no-value", component_property="children"),
     Input(component_id="slider-p-hard-no", component_property="value"),
 )
-def update_output_div(input_value):
-    return r"Anti-vaccines: {0:.0f}%".format(input_value)
+def update_output_div(values):
+    return f"Anti-vaccines: {values[0]} - {values[1]}%"
 
 
-@app.callback(
-    Output(component_id="output-p-soft-no-value", component_property="children"),
-    Input("slider-p-yes", "value"),
-    Input("slider-p-hard-no", "value"),
-)
-def update_output_div(p_yes, p_hard_no):
-    v = 100 - (p_yes + p_hard_no)
-    return r"Agnosticts: {0:.0f}%".format(v)
+# @app.callback(
+#     Output(component_id="output-p-soft-no-value", component_property="children"),
+#     Input("slider-p-yes", "value"),
+#     Input("slider-p-hard-no", "value"),
+# )
+# def update_output_div(p_yes, p_hard_no):
+#     v = 100 - (p_yes + p_hard_no)
+#     return r"Agnosticts: {0:.0f}%".format(v)
 
 
 @app.callback(
     Output(component_id="output-pressure-value", component_property="children"),
     Input(component_id="slider-pressure", component_property="value"),
 )
-def update_output_div(input_value):
-    return r"Pressure on the agnostics to get vaccinated: {0:.0f}%".format(input_value)
+def update_output_div(values):
+    return f"Pressure on the agnostics: {values[0]} - {values[1]}%"
 
 
 # Run the server
