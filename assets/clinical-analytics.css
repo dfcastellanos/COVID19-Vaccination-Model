@@ -1,9 +1,3 @@
-@font-face {
-    font-family: Acumin;
-    font-weight: bold;
-    src: url("Acumin-BdPro.otf") format("opentype");
-}
-
 #app-container {
     width: 100%;
     max-width: none;
@@ -16,33 +10,15 @@ body {
     margin: 0px;
 }
 
-hr {
-    margin: 0.3rem 0rem;
-}
 
 .banner {
-    height: 5.5rem;
-    padding: 0rem 2rem 0rem;
+    height: 8.5rem;
+    padding: 0rem 4rem 0rem;
     background-color: white;
 
     align-items: center;
 }
 
-.banner Img {
-    position: relative;
-    height: 3rem;
-    width: auto;
-    margin-left: 2%;
-}
-
-H5 {
-    color: #2c8cff;
-    font-weight: 300;
-}
-
-H5, H3 {
-    font-family: Acumin, "Helvetica Neue", sans-serif;
-}
 
 #left-column {
     margin-top: 20px;
@@ -59,16 +35,6 @@ H5, H3 {
 }
 
 
-#plot_header {
-    background-color: #FFFFFF;
-    padding: 1rem;
-    margin: auto;
-    margin-top: 20px;
-}
-
-#plot_grid {
-    height: 400px;
-}
 
 #control-card > p {
     font-weight: bold;

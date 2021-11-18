@@ -68,7 +68,6 @@ def description_card():
         children=[
             html.Div(
                 id="intro",
-                # children="Here you can tune the population views on vaccines, the vaccines production rates, and the Monte Carlo sampling parameters.",
             ),
             html.Br(),
         ],
@@ -97,7 +96,8 @@ def generate_population_controls():
                 id="slider-p-hard-no",
                 min=0.0,
                 max=100,
-                value=[5, 15],
+                value=[15, 25],
+                allowCross=False,
                 marks={"0": "0%", "100": "100%"},
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
@@ -111,8 +111,51 @@ def generate_population_controls():
                 min=0.0,
                 max=10,
                 value=[2, 5],
+                allowCross=False,
                 marks={"0": "0%", "10": "10%"},
                 step=0.5,
+                tooltip={"placement": "bottom", "always_visible": False},
+            ),
+        ],
+    )
+
+
+def generate_vaccine_controls():
+
+    return html.Div(
+        id="vaccine-controls",
+        children=[
+            html.Div(id="output-nv0-value"),
+            dcc.RangeSlider(
+                id="slider-nv0",
+                min=0.0,
+                max=1.0,
+                value=[0.05, 0.2],
+                allowCross=False,
+                marks={"0": "0%", "1": "1%"},
+                step=0.05,
+                tooltip={"placement": "bottom", "always_visible": False},
+            ),
+            html.Div(id="output-tau-value"),
+            dcc.RangeSlider(
+                id="slider-tau",
+                min=1,
+                max=12,
+                value=[4, 5],
+                allowCross=False,
+                marks={"1": "1 week", "12": "12 weeks"},
+                step=1,
+                tooltip={"placement": "bottom", "always_visible": False},
+            ),
+            html.Div(id="output-nvmax-value"),
+            dcc.RangeSlider(
+                id="slider-nvmax",
+                min=0.1,
+                max=20,
+                value=[4, 7],
+                allowCross=False,
+                marks={"0.1": "0.1%", "20": "20%"},
+                step=1e-1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
         ],
@@ -139,7 +182,7 @@ def generate_country_and_date_controls():
             dcc.Dropdown(
                 id="country-select",
                 options=[{"label": i, "value": i} for i in avail_countries],
-                value=[],
+                value=["Germany", "United States", "Russia"],
                 multi=True,
             ),
         ],
@@ -246,7 +289,7 @@ app.layout = html.Div(
                         ),
                         dcc.Tab(
                             label="Vaccines",
-                            children=[],
+                            children=[html.Br(), generate_vaccine_controls()],
                             style=tab_style,
                             selected_style=tab_selected_style,
                         ),
@@ -305,7 +348,9 @@ app.layout = html.Div(
 )
 
 
-def add_line(fig, x, y, color, name=None, row=1, col=1, fill="none", width=2):
+def add_line(
+    fig, x, y, color, name=None, row=1, col=1, fill="none", width=2, annotation=False
+):
 
     # plot line
 
@@ -330,7 +375,7 @@ def add_line(fig, x, y, color, name=None, row=1, col=1, fill="none", width=2):
     )
 
     # write annotation
-    if name is not None:
+    if annotation:
 
         fig.add_annotation(
             xref="paper",
@@ -358,6 +403,10 @@ def add_line(fig, x, y, color, name=None, row=1, col=1, fill="none", width=2):
     Input("slider-p-yes", "value"),
     Input("slider-p-hard-no", "value"),
     Input("slider-pressure", "value"),
+    # vaccinations parameters
+    Input("slider-tau", "value"),
+    Input("slider-nv0", "value"),
+    Input("slider-nvmax", "value"),
     # countries and dates
     Input("date-picker-select", "start_date"),
     Input("date-picker-select", "end_date"),
@@ -367,6 +416,9 @@ def update_figures(
     p_yes_bounds,
     p_hard_no_bounds,
     pressure_bounds,
+    tau_bounds,
+    nv_0_bounds,
+    nv_max_bounds,
     start_date,
     end_date,
     selected_countries,
@@ -388,60 +440,86 @@ def update_figures(
     end_date = dt.strptime(end_date.split("T")[0], "%Y-%m-%d")
 
     n_rep = 100
-    N = 2000
+    N = 1000
 
-    # sliders use values 0-100
+    # # sliders use values 0-100
+    # tau = 4 # weeks to duplicate the arrival of vaccines
+    # nv_0 = 0.09 # stock of vaccines avail. first day of campaing (frac of popuplation)
+    # nv_max = 5 # max. arrival of vaccines in (frac of popuplation)
 
     params_combinations, p_soft_no_values = sample_param_combinations(
         np.array(p_yes_bounds) / 100,
         np.array(p_hard_no_bounds) / 100,
         np.array(pressure_bounds) / 100,
+        np.array(tau_bounds),
+        np.array(nv_0_bounds) / 100,
+        np.array(nv_max_bounds) / 100,
         n_rep,
     )
 
     if params_combinations is None:
         return fig, None, "The pertentages above are too high", {"color": "red"}
 
-    # p_yes_values = np.random.uniform(p_yes_bounds[0], p_yes_bounds[1], size=n_rep) / 100
-
-    # p_hard_no_values = (
-    #     np.random.uniform(p_hard_no_bounds[0], p_hard_no_bounds[1], size=n_rep) / 100
-    # )
-    # pressure_values = (
-    #     np.random.uniform(pressure_bounds[0], pressure_bounds[1], size=n_rep) / 100
-    # )
-
-    max_delivery = 0.05
-    a = 0.0007
-    F = lambda t: min(a * np.exp(0.2 * t / 7), max_delivery) * N
-
-    # np.random.seed(1234567)
-
-    data = run_model_sampling(params_combinations, start_date, end_date, F, N)
+    data = run_model_sampling(params_combinations, start_date, end_date, N)
 
     # ---- plot model results ----
 
     colors = px.colors.qualitative.Safe
 
-    fig = add_line(fig, data["pv_dates"], data["pv_mean"], "royalblue", "Model", 1, 1)
     fig = add_line(
-        fig, data["pv_dates"], data["pv_upper"], colors[0], None, 1, 1, width=0
+        fig,
+        data["pv_dates"],
+        data["pv_mean"],
+        "royalblue",
+        "Model",
+        1,
+        1,
+        annotation=True,
+    )
+    fig = add_line(
+        fig,
+        data["pv_dates"],
+        data["pv_upper"],
+        colors[0],
+        "Model CI=95%",
+        1,
+        1,
+        width=0,
+        annotation=False,
     )
     fig = add_line(
         fig,
         data["pv_dates"],
         data["pv_lower"],
         colors[0],
-        None,
+        "Model CI=95%",
         1,
         1,
         width=0,
         fill="tonexty",
+        annotation=False,
     )
 
-    fig = add_line(fig, data["dv_dates"], data["dv_mean"], "royalblue", "Model", 1, 2)
     fig = add_line(
-        fig, data["dv_dates"], data["dv_upper"], colors[0], None, 1, 2, width=0
+        fig,
+        data["dv_dates"],
+        data["dv_mean"],
+        "royalblue",
+        "Model",
+        1,
+        2,
+        annotation=True,
+    )
+    fig = add_line(
+        fig,
+        data["dv_dates"],
+        data["dv_upper"],
+        colors[0],
+        "Model CI=95%",
+        1,
+        2,
+        width=0,
+        annotation=False,
     )
 
     data["dv_lower"][data["dv_lower"] < 0] = 0.0
@@ -450,11 +528,12 @@ def update_figures(
         data["dv_dates"],
         data["dv_lower"],
         colors[0],
-        None,
+        "Model CI=95%",
         1,
         2,
         width=0,
         fill="tonexty",
+        annotation=False,
     )
 
     # ----- add curves with data from the selected countries ----
@@ -462,12 +541,16 @@ def update_figures(
     df = country_data["people_fully_vaccinated_per_hundred"]
     for i, country in enumerate(selected_countries):
         g = df[country].dropna()
-        fig = add_line(fig, g.index, g, colors[i + 1], country, 1, 1)
+        fig = add_line(
+            fig, g.index, g, colors[i + 1], country, 1, 1, width=1, annotation=True
+        )
 
     df = country_data["daily_vaccinations_per_million"]
     for i, country in enumerate(selected_countries):
         g = df[country].dropna()
-        fig = add_line(fig, g.index, g, colors[i + 1], country, 1, 2)
+        fig = add_line(
+            fig, g.index, g, colors[i + 1], country, 1, 2, width=1, annotation=True
+        )
 
     fig.update_yaxes(range=[0, 100], row=1, col=1)
     # fig.update_layout(height=400, width=1100)
@@ -501,22 +584,36 @@ def update_output_div(values):
     return f"Anti-vaccines: {values[0]} - {values[1]}%"
 
 
-# @app.callback(
-#     Output(component_id="output-p-soft-no-value", component_property="children"),
-#     Input("slider-p-yes", "value"),
-#     Input("slider-p-hard-no", "value"),
-# )
-# def update_output_div(p_yes, p_hard_no):
-#     v = 100 - (p_yes + p_hard_no)
-#     return r"Agnosticts: {0:.0f}%".format(v)
-
-
 @app.callback(
     Output(component_id="output-pressure-value", component_property="children"),
     Input(component_id="slider-pressure", component_property="value"),
 )
 def update_output_div(values):
     return f"Pressure on the agnostics: {values[0]} - {values[1]}%"
+
+
+@app.callback(
+    Output(component_id="output-nv0-value", component_property="children"),
+    Input(component_id="slider-nv0", component_property="value"),
+)
+def update_output_div(values):
+    return f"Initial stock: {values[0]} - {values[1]}%"
+
+
+@app.callback(
+    Output(component_id="output-tau-value", component_property="children"),
+    Input(component_id="slider-tau", component_property="value"),
+)
+def update_output_div(values):
+    return f"Duplication time: {values[0]} - {values[1]}%"
+
+
+@app.callback(
+    Output(component_id="output-nvmax-value", component_property="children"),
+    Input(component_id="slider-nvmax", component_property="value"),
+)
+def update_output_div(values):
+    return f"Weekly limit: {values[0]} - {values[1]}%"
 
 
 # Run the server

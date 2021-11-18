@@ -3,9 +3,15 @@ import pandas as pd
 import scipy.stats as st
 
 
-def run_single_realization(p_yes, p_no_hard, pressure, max_day_number, F, N):
+def run_single_realization(
+    p_yes, p_no_hard, pressure, tau, nv_0, nv_max, max_day_number, N
+):
 
-    assert p_yes + p_no_hard < 1.0
+    # tau = 4
+    # nv_0 = 0.001
+    # nv_max = 5
+
+    assert p_yes + p_no_hard <= 1.0
 
     p_no_soft = 1 - (p_yes + p_no_hard)
 
@@ -16,6 +22,8 @@ def run_single_realization(p_yes, p_no_hard, pressure, max_day_number, F, N):
     C[:n_yes] = 2
     C[n_yes : n_yes + n_no_soft + 1] = 1
     C[n_yes + n_no_soft + 1 : (n_yes + n_no_soft + 1) + n_no_hard + 1] = 0
+
+    F = lambda t: min(nv_0 * np.exp(np.log(2) * t / (tau * 7)), nv_max) * N
 
     nv_available = 0
     cum_number_vac_received = 0
@@ -29,9 +37,6 @@ def run_single_realization(p_yes, p_no_hard, pressure, max_day_number, F, N):
 
         # upated vaccines
         if day_number % 7 == 0.0:
-            # approx. number of pfizer for spain
-            # max_delivery = 0.05
-            # a = 0.0007
             nv_arriving = int(F(day_number))
             assert nv_arriving >= 0
             nv_available += nv_arriving
@@ -85,15 +90,17 @@ def run_single_realization(p_yes, p_no_hard, pressure, max_day_number, F, N):
     return people_fully_vaccinated_per_hundred, daily_vaccinations_per_million
 
 
-def run_model_sampling(params_sets, start_date, end_date, F, N):
+def run_model_sampling(params_sets, start_date, end_date, N):
 
     dates = pd.date_range(start_date, end_date, freq="1d")
     max_days = len(dates)
 
     pv = list()
     dv = list()
-    for p_yes, p_hard_no, pressure in params_sets:
-        pv_, dv_ = run_single_realization(p_yes, p_hard_no, pressure, max_days, F, N)
+    for p_yes, p_hard_no, pressure, tau, nv_0, nv_max in params_sets:
+        pv_, dv_ = run_single_realization(
+            p_yes, p_hard_no, pressure, tau, nv_0, nv_max, max_days, N
+        )
         pv.append(pv_)
         dv.append(dv_)
     pv = np.vstack(pv)
@@ -134,7 +141,15 @@ def run_model_sampling(params_sets, start_date, end_date, F, N):
     return data
 
 
-def sample_param_combinations(p_yes_bounds, p_hard_no_bounds, pressure_bounds, n_rep):
+def sample_param_combinations(
+    p_yes_bounds,
+    p_hard_no_bounds,
+    pressure_bounds,
+    tau_bounds,
+    nv_0_bounds,
+    nv_max_bounds,
+    n_rep,
+):
 
     params_combinations = list()
     p_soft_no_values = list()
@@ -149,7 +164,11 @@ def sample_param_combinations(p_yes_bounds, p_hard_no_bounds, pressure_bounds, n
                 n += 1
                 continue
             pressure = np.random.uniform(pressure_bounds[0], pressure_bounds[1])
-            params_combinations.append([p_yes, p_hard_no, pressure])
+            tau = np.random.uniform(tau_bounds[0], tau_bounds[1])
+            nv_0 = np.random.uniform(nv_0_bounds[0], nv_0_bounds[1])
+            nv_max = np.random.uniform(nv_max_bounds[0], nv_max_bounds[1])
+
+            params_combinations.append([p_yes, p_hard_no, pressure, tau, nv_0, nv_max])
             p_soft_no_values.append(1 - (p_yes + p_hard_no))
 
     return params_combinations, p_soft_no_values
