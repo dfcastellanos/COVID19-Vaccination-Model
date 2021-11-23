@@ -60,6 +60,8 @@ tab_selected_style = {"padding-top": 7}
 
 tabs_styles = {"height": "44px"}
 
+style_controls = {"height": "25vh"}
+
 
 def generate_population_controls():
 
@@ -104,6 +106,7 @@ def generate_population_controls():
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
         ],
+        style=style_controls,
     )
 
 
@@ -146,6 +149,7 @@ def generate_vaccine_controls():
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
         ],
+        style=style_controls,
     )
 
 
@@ -189,6 +193,7 @@ def generate_sampling_controls():
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
         ],
+        style=style_controls,
     )
 
 
@@ -197,7 +202,7 @@ def generate_country_and_date_controls():
     return html.Div(
         id="contry-date-controls",
         children=[
-            html.Br(),
+            html.Hr(style={"height": "2px"}),
             html.P("Date range"),
             dcc.DatePickerRange(
                 id="date-picker-select",
