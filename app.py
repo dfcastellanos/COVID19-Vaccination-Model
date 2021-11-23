@@ -1,6 +1,6 @@
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 import plotly.express as px
@@ -59,19 +59,6 @@ tab_style = {"padding-top": 7}
 tab_selected_style = {"padding-top": 7}
 
 tabs_styles = {"height": "44px"}
-
-
-def description_card():
-
-    return html.Div(
-        id="description-card",
-        children=[
-            html.Div(
-                id="intro",
-            ),
-            html.Br(),
-        ],
-    )
 
 
 def generate_population_controls():
@@ -195,9 +182,9 @@ def generate_sampling_controls():
             dcc.Slider(
                 id="slider-CI",
                 min=0.0,
-                max=95,
+                max=100.0,
                 value=95,
-                marks={"0": "0%", "95": "95%"},
+                marks={"0": "0%", "100": "100%"},
                 step=5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
@@ -321,7 +308,6 @@ app.layout = html.Div(
             id="left-column",
             className="three columns",
             children=[
-                description_card(),
                 dcc.Tabs(
                     children=[
                         dcc.Tab(

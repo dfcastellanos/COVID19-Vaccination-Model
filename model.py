@@ -120,6 +120,8 @@ def run_model_sampling(params_sets, start_date, end_date, CI, N):
     dv *= 2
 
     # get confidence intervals for each date, computed accros repetitions
+    # CI of 1.0 produces same result as 0, let's allow only till 0.99 instead
+    CI = min(CI, 0.99)
     fun = lambda x: st.t.interval(CI, len(x) - 1, loc=np.mean(x), scale=np.std(x))
     pv_CI = np.vstack(list(map(fun, pv.T))).T
     dv_CI = np.vstack(list(map(fun, dv.T))).T
