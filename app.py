@@ -60,7 +60,7 @@ tab_selected_style = {"padding-top": 7}
 
 tabs_styles = {"height": "44px"}
 
-style_controls = {"height": "25vh"}
+style_controls = {"height": "30vh"}
 
 
 def generate_population_controls():
@@ -80,6 +80,7 @@ def generate_population_controls():
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            html.Br(),
             html.Div(id="output-p-hard-no-value"),
             dcc.RangeSlider(
                 id="slider-p-hard-no",
@@ -91,9 +92,10 @@ def generate_population_controls():
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            html.Div(id="pop-controls-error-msg", style={"color": "red"}),
-            html.Div(id="output-p-soft-no-value"),
             html.Br(),
+            html.Div(id="pop-controls-error-msg", style={"color": "red"}),
+            html.Br(),
+            html.Div(id="output-p-soft-no-value"),
             html.Div(id="output-pressure-value"),
             dcc.RangeSlider(
                 id="slider-pressure",
@@ -126,6 +128,7 @@ def generate_vaccine_controls():
                 step=0.05,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            html.Br(),
             html.Div(id="output-tau-value"),
             dcc.RangeSlider(
                 id="slider-tau",
@@ -137,6 +140,7 @@ def generate_vaccine_controls():
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            html.Br(),
             html.Div(id="output-nvmax-value"),
             dcc.RangeSlider(
                 id="slider-nvmax",
