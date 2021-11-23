@@ -162,6 +162,49 @@ def generate_vaccine_controls():
     )
 
 
+def generate_sampling_controls():
+
+    return html.Div(
+        id="sampling-controls",
+        children=[
+            html.Div(id="output-nrep-value"),
+            dcc.Input(
+                id="input-nrep",
+                type="number",
+                value=100,
+                min=10,
+                max=10000,
+                step=10,
+                debounce=True,
+            ),
+            html.Br(),
+            html.Br(),
+            html.Div(id="output-N-value"),
+            dcc.Input(
+                id="input-N",
+                type="number",
+                value=1000,
+                min=300,
+                max=10000,
+                step=10,
+                debounce=True,
+            ),
+            html.Br(),
+            html.Br(),
+            html.Div(id="output-CI-value"),
+            dcc.Slider(
+                id="slider-CI",
+                min=0.0,
+                max=95,
+                value=95,
+                marks={"0": "0", "95": "95"},
+                step=5,
+                tooltip={"placement": "bottom", "always_visible": False},
+            ),
+        ],
+    )
+
+
 def generate_country_and_date_controls():
 
     return html.Div(
@@ -295,7 +338,7 @@ app.layout = html.Div(
                         ),
                         dcc.Tab(
                             label="Sampling",
-                            children=[],
+                            children=[html.Br(), generate_sampling_controls()],
                             style=tab_style,
                             selected_style=tab_selected_style,
                         ),
@@ -407,24 +450,34 @@ def add_line(
     Input("slider-tau", "value"),
     Input("slider-nv0", "value"),
     Input("slider-nvmax", "value"),
+    # samping
+    Input("slider-CI", "value"),
+    Input("input-nrep", "value"),
+    Input("input-N", "value"),
     # countries and dates
     Input("date-picker-select", "start_date"),
     Input("date-picker-select", "end_date"),
     Input("country-select", "value"),
 )
 def update_figures(
+    # population message: error and agnostic percentage
     p_yes_bounds,
     p_hard_no_bounds,
     pressure_bounds,
+    # vaccinations parameters
     tau_bounds,
     nv_0_bounds,
     nv_max_bounds,
+    # samping
+    CI,
+    n_rep,
+    N,
+    # countries and dates
     start_date,
     end_date,
     selected_countries,
 ):
 
-    #
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -439,14 +492,7 @@ def update_figures(
     start_date = dt.strptime(start_date.split("T")[0], "%Y-%m-%d")
     end_date = dt.strptime(end_date.split("T")[0], "%Y-%m-%d")
 
-    n_rep = 100
-    N = 1000
-
     # # sliders use values 0-100
-    # tau = 4 # weeks to duplicate the arrival of vaccines
-    # nv_0 = 0.09 # stock of vaccines avail. first day of campaing (frac of popuplation)
-    # nv_max = 5 # max. arrival of vaccines in (frac of popuplation)
-
     params_combinations, p_soft_no_values = sample_param_combinations(
         np.array(p_yes_bounds) / 100,
         np.array(p_hard_no_bounds) / 100,
@@ -460,7 +506,7 @@ def update_figures(
     if params_combinations is None:
         return fig, None, "The pertentages above are too high", {"color": "red"}
 
-    data = run_model_sampling(params_combinations, start_date, end_date, N)
+    data = run_model_sampling(params_combinations, start_date, end_date, CI / 100, N)
 
     # ---- plot model results ----
 
@@ -481,7 +527,7 @@ def update_figures(
         data["pv_dates"],
         data["pv_upper"],
         colors[0],
-        "Model CI=95%",
+        f"Model CI={CI}%",
         1,
         1,
         width=0,
@@ -492,7 +538,7 @@ def update_figures(
         data["pv_dates"],
         data["pv_lower"],
         colors[0],
-        "Model CI=95%",
+        f"Model CI={CI}%",
         1,
         1,
         width=0,
@@ -515,7 +561,7 @@ def update_figures(
         data["dv_dates"],
         data["dv_upper"],
         colors[0],
-        "Model CI=95%",
+        f"Model CI={CI}%",
         1,
         2,
         width=0,
@@ -528,7 +574,7 @@ def update_figures(
         data["dv_dates"],
         data["dv_lower"],
         colors[0],
-        "Model CI=95%",
+        f"Model CI={CI}%",
         1,
         2,
         width=0,
@@ -597,7 +643,7 @@ def update_output_div(values):
     Input(component_id="slider-nv0", component_property="value"),
 )
 def update_output_div(values):
-    return f"Initial stock: {values[0]} - {values[1]}%"
+    return f"Initial stock: {values[0]} - {values[1]}% of the pop."
 
 
 @app.callback(
@@ -605,7 +651,7 @@ def update_output_div(values):
     Input(component_id="slider-tau", component_property="value"),
 )
 def update_output_div(values):
-    return f"Duplication time: {values[0]} - {values[1]}%"
+    return f"Duplication time: {values[0]} - {values[1]} weeks"
 
 
 @app.callback(
@@ -613,7 +659,31 @@ def update_output_div(values):
     Input(component_id="slider-nvmax", component_property="value"),
 )
 def update_output_div(values):
-    return f"Weekly limit: {values[0]} - {values[1]}%"
+    return f"Weekly arrival limit: {values[0]} - {values[1]}% of the pop."
+
+
+@app.callback(
+    Output(component_id="output-CI-value", component_property="children"),
+    Input(component_id="slider-CI", component_property="value"),
+)
+def update_output_div(value):
+    return f"Confidence interval: {value}%"
+
+
+@app.callback(
+    Output(component_id="output-nrep-value", component_property="children"),
+    Input(component_id="input-nrep", component_property="value"),
+)
+def update_output_div(value):
+    return f"Number of Monte Carlo runs: {value}"
+
+
+@app.callback(
+    Output(component_id="output-N-value", component_property="children"),
+    Input(component_id="input-N", component_property="value"),
+)
+def update_output_div(value):
+    return f"Population size: {value}"
 
 
 # Run the server

@@ -90,7 +90,7 @@ def run_single_realization(
     return people_fully_vaccinated_per_hundred, daily_vaccinations_per_million
 
 
-def run_model_sampling(params_sets, start_date, end_date, N):
+def run_model_sampling(params_sets, start_date, end_date, CI, N):
 
     dates = pd.date_range(start_date, end_date, freq="1d")
     max_days = len(dates)
@@ -120,7 +120,7 @@ def run_model_sampling(params_sets, start_date, end_date, N):
     dv *= 2
 
     # get confidence intervals for each date, computed accros repetitions
-    fun = lambda x: st.t.interval(0.95, len(x) - 1, loc=np.mean(x), scale=np.std(x))
+    fun = lambda x: st.t.interval(CI, len(x) - 1, loc=np.mean(x), scale=np.std(x))
     pv_CI = np.vstack(list(map(fun, pv.T))).T
     dv_CI = np.vstack(list(map(fun, dv.T))).T
 
