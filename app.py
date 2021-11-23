@@ -197,7 +197,7 @@ def generate_sampling_controls():
                 min=0.0,
                 max=95,
                 value=95,
-                marks={"0": "0", "95": "95"},
+                marks={"0": "0%", "95": "95%"},
                 step=5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
