@@ -117,7 +117,9 @@ def run_model_sampling(params_sets, start_date, end_date, CI, N):
     # multiply by 2 to take into account that in the real world data, for most
     # of the countries (at least for EU) a full vaccination counts as
     # 2 units
-    dv *= 2
+    # dv *= 2
+    # NOTE: the graphs show that without this factor, the match with the reference
+    # data is better
 
     # get confidence intervals for each date, computed accros repetitions
     # CI of 1.0 produces same result as 0, let's allow only till 0.99 instead
