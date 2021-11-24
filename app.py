@@ -235,7 +235,15 @@ def generate_plots_section():
         children=[
             dcc.Graph(
                 id="plot_grid",
-                style={
+                config = {
+                          'toImageButtonOptions': {
+                            'format': 'svg',
+                            'filename': 'vaccination_model',
+                            'scale': 2
+                          },
+                          'displaylogo': False,
+                        },
+                style = {
                     # "width": "130vh",
                     # "height": "50vh",
                     # "display": "inline-block",
