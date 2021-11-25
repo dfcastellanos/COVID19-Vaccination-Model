@@ -265,6 +265,7 @@ def generate_plots_section():
                     # "transform": "translate(-50%, -50%)"
                 },
             ),
+            dcc.Store(id="store-model-results", storage_type="memory"),
         ],
     )
 
@@ -460,6 +461,8 @@ def add_line(
     # population message: error and agnostic percentage
     Output("agnostics-pct-msg", "children"),
     Output("error-msg", "children"),
+    # update the stored model results
+    Output("store-model-results", "data"),
     # run button
     Input("run-button", "n_clicks"),
     # countries and dates
@@ -478,8 +481,11 @@ def add_line(
     State("store-N", "data"),
     # date range
     State("store-date-range", "data"),
+    # model result
+    State("store-model-results", "data"),
 )
 def update_figures(
+    # button input
     n_clicks,
     # countries
     selected_countries,
@@ -496,7 +502,26 @@ def update_figures(
     n_rep,
     N,
     date_range,
+    # model results
+    model_results,
 ):
+
+    # we can re-use previous model results if we must update the figure but
+    # only the country selection changed. For that, we can check the callback
+    # contex and see if the trigger was the run button being pressed. If not,
+    # we can read the stored model results and resuse them
+    # ctx = dash.callback_context.triggered
+    # assert len(ctx)==1
+    # update_model = ctx[0]['prop_id'] == 'run-button.n_clicks'
+
+    # instead of using the stored last model run, we define a seed so that the
+    # values obtained from calling sample_param_combinations are
+    # repeated when no changes from the GUI components are mande.
+    # This means that the parameters to run_model_sampling
+    # repeat exactly so we can leverage this by using the @functools.lru_cache
+    # decorator on run_model_sampling. In this way the results are automatically
+    # cached and reused when the exactly the same input repeats
+    np.random.seed(12345)
 
     # default output messages
     msg_agnostics_pct = "Agnosticts: "
@@ -513,6 +538,7 @@ def update_figures(
 
     colors = px.colors.qualitative.Safe
 
+    # make sure that the run button has already been pressed once
     if n_clicks is not None:
 
         # ---- sample the model with the selected parameters ----
@@ -545,22 +571,24 @@ def update_figures(
 
         if params_combinations is None:
             msg_error += "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
-            return fig, None, msg_agnostics_pct, msg_error
+            return model_results, fig, None, msg_agnostics_pct, msg_error
 
-        data = run_model_sampling(
+        model_results = run_model_sampling(
             params_combinations, start_date, end_date, CI / 100, N
         )
 
-        if data is None:
+        model_results["dv_lower"][model_results["dv_lower"] < 0] = 0.0
+
+        if model_results is None:
             msg_error = "ERROR: Maximum computation time of 30s exceeded. Please reduce the number of Monte Carlo runs or the population size."
-            return fig, None, msg_agnostics_pct, msg_error
+            return model_results, fig, None, msg_agnostics_pct, msg_error
 
         # ---- plot model results ----
 
         fig = add_line(
             fig,
-            data["pv_dates"],
-            data["pv_mean"],
+            model_results["pv_dates"],
+            model_results["pv_mean"],
             "royalblue",
             "Model",
             1,
@@ -569,8 +597,8 @@ def update_figures(
         )
         fig = add_line(
             fig,
-            data["pv_dates"],
-            data["pv_upper"],
+            model_results["pv_dates"],
+            model_results["pv_upper"],
             colors[0],
             f"Model CI={CI}%",
             1,
@@ -580,8 +608,8 @@ def update_figures(
         )
         fig = add_line(
             fig,
-            data["pv_dates"],
-            data["pv_lower"],
+            model_results["pv_dates"],
+            model_results["pv_lower"],
             colors[0],
             f"Model CI={CI}%",
             1,
@@ -593,8 +621,8 @@ def update_figures(
 
         fig = add_line(
             fig,
-            data["dv_dates"],
-            data["dv_mean"],
+            model_results["dv_dates"],
+            model_results["dv_mean"],
             "royalblue",
             "Model",
             1,
@@ -603,8 +631,8 @@ def update_figures(
         )
         fig = add_line(
             fig,
-            data["dv_dates"],
-            data["dv_upper"],
+            model_results["dv_dates"],
+            model_results["dv_upper"],
             colors[0],
             f"Model CI={CI}%",
             1,
@@ -613,11 +641,10 @@ def update_figures(
             annotation=False,
         )
 
-        data["dv_lower"][data["dv_lower"] < 0] = 0.0
         fig = add_line(
             fig,
-            data["dv_dates"],
-            data["dv_lower"],
+            model_results["dv_dates"],
+            model_results["dv_lower"],
             colors[0],
             f"Model CI={CI}%",
             1,
@@ -628,7 +655,7 @@ def update_figures(
         )
 
     # ----- add curves with data from the selected countries ----
-
+    print(selected_countries)
     df = country_data["people_fully_vaccinated_per_hundred"]
     for i, country in enumerate(selected_countries):
         g = df[country].dropna()
@@ -646,7 +673,7 @@ def update_figures(
     fig.update_yaxes(range=[0, 100], row=1, col=1)
     # fig.update_layout(height=400, width=1100)
 
-    return fig, None, msg_agnostics_pct, msg_error
+    return fig, None, msg_agnostics_pct, msg_error, model_results
 
 
 @app.callback(

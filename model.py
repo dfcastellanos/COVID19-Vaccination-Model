@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as st
 import time
+import functools
 
 
 def run_single_realization(
@@ -91,6 +92,7 @@ def run_single_realization(
     return people_fully_vaccinated_per_hundred, daily_vaccinations_per_million
 
 
+@functools.lru_cache(maxsize=10)
 def run_model_sampling(params_sets, start_date, end_date, CI, N):
 
     starting_time = time.time()
@@ -179,7 +181,11 @@ def sample_param_combinations(
             nv_0 = np.random.uniform(nv_0_bounds[0], nv_0_bounds[1])
             nv_max = np.random.uniform(nv_max_bounds[0], nv_max_bounds[1])
 
-            params_combinations.append([p_yes, p_hard_no, pressure, tau, nv_0, nv_max])
+            # work with tuples so that we can later use @functools.lru_cache, since it need
+            # hashable types
+            params_combinations.append(
+                tuple([p_yes, p_hard_no, pressure, tau, nv_0, nv_max])
+            )
             p_soft_no_values.append(1 - (p_yes + p_hard_no))
 
-    return params_combinations, p_soft_no_values
+    return tuple(params_combinations), tuple(p_soft_no_values)
