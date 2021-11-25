@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as st
+import time
 
 
 def run_single_realization(
@@ -92,6 +93,8 @@ def run_single_realization(
 
 def run_model_sampling(params_sets, start_date, end_date, CI, N):
 
+    starting_time = time.time()
+
     dates = pd.date_range(start_date, end_date, freq="1d")
     max_days = len(dates)
 
@@ -101,6 +104,10 @@ def run_model_sampling(params_sets, start_date, end_date, CI, N):
         pv_, dv_ = run_single_realization(
             p_yes, p_hard_no, pressure, tau, nv_0, nv_max, max_days, N
         )
+        elapsed_time = time.time() - starting_time
+        if elapsed_time > 30:
+            return None
+
         pv.append(pv_)
         dv.append(dv_)
     pv = np.vstack(pv)

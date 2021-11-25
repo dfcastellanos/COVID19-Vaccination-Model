@@ -2,7 +2,7 @@ import dash
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output, State
+from dash.dependencies import State, Input, Output
 import plotly.express as px
 import plotly.io as pio
 import plotly.graph_objects as go
@@ -60,7 +60,7 @@ tab_selected_style = {"padding-top": 7}
 
 tabs_styles = {"height": "44px"}
 
-style_controls = {"height": "30vh"}
+style_controls = {"height": "33vh"}
 
 
 def generate_population_controls():
@@ -68,7 +68,6 @@ def generate_population_controls():
     return html.Div(
         id="population-controls",
         children=[
-            # html.P("Population views on vaccines"),
             html.Div(id="output-p-yes-value"),
             dcc.RangeSlider(
                 id="slider-p-yes",
@@ -80,6 +79,7 @@ def generate_population_controls():
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            dcc.Store(id="store-p-yes", storage_type="memory"),
             html.Br(),
             html.Div(id="output-p-hard-no-value"),
             dcc.RangeSlider(
@@ -92,8 +92,9 @@ def generate_population_controls():
                 step=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            dcc.Store(id="store-p-hard-no", storage_type="memory"),
             html.Br(),
-            html.Div(id="pop-controls-error-msg", style={"color": "red"}),
+            html.Div(id="agnostics-pct-msg"),
             html.Br(),
             html.Div(id="output-p-soft-no-value"),
             html.Div(id="output-pressure-value"),
@@ -107,6 +108,7 @@ def generate_population_controls():
                 step=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            dcc.Store(id="store-pressure", storage_type="memory"),
         ],
         style=style_controls,
     )
@@ -128,6 +130,7 @@ def generate_vaccine_controls():
                 step=0.05,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            dcc.Store(id="store-nv0", storage_type="memory"),
             html.Br(),
             html.Div(id="output-tau-value"),
             dcc.RangeSlider(
@@ -137,9 +140,10 @@ def generate_vaccine_controls():
                 value=[4, 5],
                 allowCross=False,
                 marks={"1": "1 week", "12": "12 weeks"},
-                step=1,
+                step=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            dcc.Store(id="store-tau", storage_type="memory"),
             html.Br(),
             html.Div(id="output-nvmax-value"),
             dcc.RangeSlider(
@@ -152,6 +156,7 @@ def generate_vaccine_controls():
                 step=1e-1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            dcc.Store(id="store-nvmax", storage_type="memory"),
         ],
         style=style_controls,
     )
@@ -168,10 +173,11 @@ def generate_sampling_controls():
                 type="number",
                 value=100,
                 min=10,
-                max=10000,
+                max=3000,
                 step=10,
                 debounce=True,
             ),
+            dcc.Store(id="store-nrep", storage_type="memory"),
             html.Br(),
             html.Br(),
             html.Div(id="output-N-value"),
@@ -184,6 +190,7 @@ def generate_sampling_controls():
                 step=10,
                 debounce=True,
             ),
+            dcc.Store(id="store-N", storage_type="memory"),
             html.Br(),
             html.Br(),
             html.Div(id="output-CI-value"),
@@ -196,6 +203,7 @@ def generate_sampling_controls():
                 step=5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
+            dcc.Store(id="store-CI", storage_type="memory"),
         ],
         style=style_controls,
     )
@@ -215,6 +223,7 @@ def generate_country_and_date_controls():
                 display_format="MMM Do, YY",
                 initial_visible_month=dt.today(),
             ),
+            dcc.Store(id="store-date-range", storage_type="memory"),
             html.Br(),
             html.Br(),
             html.P("Add country"),
@@ -224,6 +233,7 @@ def generate_country_and_date_controls():
                 value=["Germany", "United States", "Russia"],
                 multi=True,
             ),
+            dcc.Store(id="store-countries", storage_type="memory"),
         ],
     )
 
@@ -235,15 +245,16 @@ def generate_plots_section():
         children=[
             dcc.Graph(
                 id="plot_grid",
-                config = {
-                          'toImageButtonOptions': {
-                            'format': 'svg',
-                            'filename': 'vaccination_model',
-                            'scale': 2
-                          },
-                          'displaylogo': False,
-                        },
-                style = {
+                config={
+                    "toImageButtonOptions": {
+                        "format": "svg",
+                        "filename": "vaccination_model",
+                        "scale": 2,
+                    },
+                    "displaylogo": False,
+                    "showTips": True,
+                },
+                style={
                     # "width": "130vh",
                     # "height": "50vh",
                     # "display": "inline-block",
@@ -348,7 +359,10 @@ app.layout = html.Div(
                     ],
                     style=tabs_styles,
                 ),
+                html.Center(html.Button("Run", id="run-button")),
                 generate_country_and_date_controls(),
+                html.Br(),
+                html.Div(id="error-msg", style={"color": "red"}),
             ],
         ),
         # Right column
@@ -440,30 +454,36 @@ def add_line(
 
 
 @app.callback(
+    # update graph and spinner
     Output("plot_grid", "figure"),
     Output("ls-loading-output-2", "children"),
     # population message: error and agnostic percentage
-    Output("pop-controls-error-msg", "children"),
-    Output("pop-controls-error-msg", "style"),
-    # population parameters
-    Input("slider-p-yes", "value"),
-    Input("slider-p-hard-no", "value"),
-    Input("slider-pressure", "value"),
-    # vaccinations parameters
-    Input("slider-tau", "value"),
-    Input("slider-nv0", "value"),
-    Input("slider-nvmax", "value"),
-    # samping
-    Input("slider-CI", "value"),
-    Input("input-nrep", "value"),
-    Input("input-N", "value"),
+    Output("agnostics-pct-msg", "children"),
+    Output("error-msg", "children"),
+    # run button
+    Input("run-button", "n_clicks"),
     # countries and dates
-    Input("date-picker-select", "start_date"),
-    Input("date-picker-select", "end_date"),
     Input("country-select", "value"),
+    # population parameters
+    State("store-p-yes", "data"),
+    State("store-p-hard-no", "data"),
+    State("store-pressure", "data"),
+    # vaccinations parameters
+    State("store-tau", "data"),
+    State("store-nv0", "data"),
+    State("store-nvmax", "data"),
+    # samping
+    State("store-CI", "data"),
+    State("store-nrep", "data"),
+    State("store-N", "data"),
+    # date range
+    State("store-date-range", "data"),
 )
 def update_figures(
-    # population message: error and agnostic percentage
+    n_clicks,
+    # countries
+    selected_countries,
+    # populatio parameters
     p_yes_bounds,
     p_hard_no_bounds,
     pressure_bounds,
@@ -475,11 +495,12 @@ def update_figures(
     CI,
     n_rep,
     N,
-    # countries and dates
-    start_date,
-    end_date,
-    selected_countries,
+    date_range,
 ):
+
+    # default output messages
+    msg_agnostics_pct = "Agnosticts: "
+    msg_error = ""
 
     fig = make_subplots(
         rows=1,
@@ -490,100 +511,121 @@ def update_figures(
         ),
     )
 
-    # ---- sample the model with the selected parameters ----
-
-    start_date = dt.strptime(start_date.split("T")[0], "%Y-%m-%d")
-    end_date = dt.strptime(end_date.split("T")[0], "%Y-%m-%d")
-
-    # # sliders use values 0-100
-    params_combinations, p_soft_no_values = sample_param_combinations(
-        np.array(p_yes_bounds) / 100,
-        np.array(p_hard_no_bounds) / 100,
-        np.array(pressure_bounds) / 100,
-        np.array(tau_bounds),
-        np.array(nv_0_bounds) / 100,
-        np.array(nv_max_bounds) / 100,
-        n_rep,
-    )
-
-    if params_combinations is None:
-        return fig, None, "The pertentages above are too high", {"color": "red"}
-
-    data = run_model_sampling(params_combinations, start_date, end_date, CI / 100, N)
-
-    # ---- plot model results ----
-
     colors = px.colors.qualitative.Safe
 
-    fig = add_line(
-        fig,
-        data["pv_dates"],
-        data["pv_mean"],
-        "royalblue",
-        "Model",
-        1,
-        1,
-        annotation=True,
-    )
-    fig = add_line(
-        fig,
-        data["pv_dates"],
-        data["pv_upper"],
-        colors[0],
-        f"Model CI={CI}%",
-        1,
-        1,
-        width=0,
-        annotation=False,
-    )
-    fig = add_line(
-        fig,
-        data["pv_dates"],
-        data["pv_lower"],
-        colors[0],
-        f"Model CI={CI}%",
-        1,
-        1,
-        width=0,
-        fill="tonexty",
-        annotation=False,
-    )
+    if n_clicks is not None:
 
-    fig = add_line(
-        fig,
-        data["dv_dates"],
-        data["dv_mean"],
-        "royalblue",
-        "Model",
-        1,
-        2,
-        annotation=True,
-    )
-    fig = add_line(
-        fig,
-        data["dv_dates"],
-        data["dv_upper"],
-        colors[0],
-        f"Model CI={CI}%",
-        1,
-        2,
-        width=0,
-        annotation=False,
-    )
+        # ---- sample the model with the selected parameters ----
 
-    data["dv_lower"][data["dv_lower"] < 0] = 0.0
-    fig = add_line(
-        fig,
-        data["dv_dates"],
-        data["dv_lower"],
-        colors[0],
-        f"Model CI={CI}%",
-        1,
-        2,
-        width=0,
-        fill="tonexty",
-        annotation=False,
-    )
+        start_date = dt.strptime(date_range["start_date"].split("T")[0], "%Y-%m-%d")
+        end_date = dt.strptime(date_range["end_date"].split("T")[0], "%Y-%m-%d")
+
+        # # sliders use values 0-100
+        params_combinations, p_soft_no_values = sample_param_combinations(
+            np.array(p_yes_bounds) / 100,
+            np.array(p_hard_no_bounds) / 100,
+            np.array(pressure_bounds) / 100,
+            np.array(tau_bounds),
+            np.array(nv_0_bounds) / 100,
+            np.array(nv_max_bounds) / 100,
+            n_rep,
+        )
+
+        # evaluate the agnostics population from the pro and anti vaccines samples
+        p_soft_no_values = 100 * np.array(p_soft_no_values)
+        a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
+        b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
+        a_str = "{0:.0f}".format(a)
+        b_str = "{0:.0f}".format(b)
+        # if the uncertainty interval is smaller than 1%, report one value instead of the interval
+        if abs(a - b) < 1:
+            msg_agnostics_pct += a_str + "%"
+        else:
+            msg_agnostics_pct += a_str + " - " + b_str + "%"
+
+        if params_combinations is None:
+            msg_error += "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
+            return fig, None, msg_agnostics_pct, msg_error
+
+        data = run_model_sampling(
+            params_combinations, start_date, end_date, CI / 100, N
+        )
+
+        if data is None:
+            msg_error = "ERROR: Maximum computation time of 30s exceeded. Please reduce the number of Monte Carlo runs or the population size."
+            return fig, None, msg_agnostics_pct, msg_error
+
+        # ---- plot model results ----
+
+        fig = add_line(
+            fig,
+            data["pv_dates"],
+            data["pv_mean"],
+            "royalblue",
+            "Model",
+            1,
+            1,
+            annotation=True,
+        )
+        fig = add_line(
+            fig,
+            data["pv_dates"],
+            data["pv_upper"],
+            colors[0],
+            f"Model CI={CI}%",
+            1,
+            1,
+            width=0,
+            annotation=False,
+        )
+        fig = add_line(
+            fig,
+            data["pv_dates"],
+            data["pv_lower"],
+            colors[0],
+            f"Model CI={CI}%",
+            1,
+            1,
+            width=0,
+            fill="tonexty",
+            annotation=False,
+        )
+
+        fig = add_line(
+            fig,
+            data["dv_dates"],
+            data["dv_mean"],
+            "royalblue",
+            "Model",
+            1,
+            2,
+            annotation=True,
+        )
+        fig = add_line(
+            fig,
+            data["dv_dates"],
+            data["dv_upper"],
+            colors[0],
+            f"Model CI={CI}%",
+            1,
+            2,
+            width=0,
+            annotation=False,
+        )
+
+        data["dv_lower"][data["dv_lower"] < 0] = 0.0
+        fig = add_line(
+            fig,
+            data["dv_dates"],
+            data["dv_lower"],
+            colors[0],
+            f"Model CI={CI}%",
+            1,
+            2,
+            width=0,
+            fill="tonexty",
+            annotation=False,
+        )
 
     # ----- add curves with data from the selected countries ----
 
@@ -604,89 +646,119 @@ def update_figures(
     fig.update_yaxes(range=[0, 100], row=1, col=1)
     # fig.update_layout(height=400, width=1100)
 
-    p_soft_no_values = 100 * np.array(p_soft_no_values)
-    a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
-    b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
-    a_str = "{0:.0f}".format(a)
-    b_str = "{0:.0f}".format(b)
-    if abs(a - b) < 1:
-        msg_agnostics_pct = "Agnosticts: " + a_str + "%"
-    else:
-        msg_agnostics_pct = "Agnosticts: " + a_str + " - " + b_str + "%"
-
-    return fig, None, msg_agnostics_pct, dict()
+    return fig, None, msg_agnostics_pct, msg_error
 
 
 @app.callback(
+    Output("store-p-yes", "data"),
     Output(component_id="output-p-yes-value", component_property="children"),
     Input(component_id="slider-p-yes", component_property="value"),
+    State("store-p-yes", "data"),
 )
-def update_output_div(values):
-    return f"Pro-vaccines: {values[0]} - {values[1]}%"
+def update_output_div(values, data):
+    data = values
+    return data, f"Pro-vaccines: {values[0]} - {values[1]}%"
 
 
 @app.callback(
+    Output("store-p-hard-no", "data"),
     Output(component_id="output-p-hard-no-value", component_property="children"),
     Input(component_id="slider-p-hard-no", component_property="value"),
+    State("store-p-hard-no", "data"),
 )
-def update_output_div(values):
-    return f"Anti-vaccines: {values[0]} - {values[1]}%"
+def update_output_div(values, data):
+    data = values
+    return data, f"Anti-vaccines: {values[0]} - {values[1]}%"
 
 
 @app.callback(
+    Output("store-pressure", "data"),
     Output(component_id="output-pressure-value", component_property="children"),
     Input(component_id="slider-pressure", component_property="value"),
+    State("store-pressure", "data"),
 )
-def update_output_div(values):
-    return f"Pressure on the agnostics: {values[0]} - {values[1]}%"
+def update_output_div(values, data):
+    data = values
+    return data, f"Pressure on the agnostics: {values[0]} - {values[1]}%"
 
 
 @app.callback(
+    Output("store-nv0", "data"),
     Output(component_id="output-nv0-value", component_property="children"),
     Input(component_id="slider-nv0", component_property="value"),
+    State("store-nv0", "data"),
 )
-def update_output_div(values):
-    return f"Initial stock: {values[0]} - {values[1]}% of the pop."
+def update_output_div(values, data):
+    data = values
+    return data, f"Initial stock: {values[0]} - {values[1]}% of the pop."
 
 
 @app.callback(
+    Output("store-tau", "data"),
     Output(component_id="output-tau-value", component_property="children"),
     Input(component_id="slider-tau", component_property="value"),
+    State("store-tau", "data"),
 )
-def update_output_div(values):
-    return f"Duplication time: {values[0]} - {values[1]} weeks"
+def update_output_div(values, data):
+    data = values
+    return data, f"Duplication time: {values[0]} - {values[1]} weeks"
 
 
 @app.callback(
+    Output("store-nvmax", "data"),
     Output(component_id="output-nvmax-value", component_property="children"),
     Input(component_id="slider-nvmax", component_property="value"),
+    State("store-nvmax", "data"),
 )
-def update_output_div(values):
-    return f"Weekly arrival limit: {values[0]} - {values[1]}% of the pop."
+def update_output_div(values, data):
+    data = values
+    return data, f"Weekly arrival limit: {values[0]} - {values[1]}% of the pop."
 
 
 @app.callback(
+    Output("store-CI", "data"),
     Output(component_id="output-CI-value", component_property="children"),
     Input(component_id="slider-CI", component_property="value"),
+    State("store-CI", "data"),
 )
-def update_output_div(value):
-    return f"Confidence interval: {value}%"
+def update_output_div(value, data):
+    data = value
+    return data, f"Confidence interval: {value}%"
 
 
 @app.callback(
+    Output("store-nrep", "data"),
     Output(component_id="output-nrep-value", component_property="children"),
     Input(component_id="input-nrep", component_property="value"),
+    State("store-nrep", "data"),
 )
-def update_output_div(value):
-    return f"Number of Monte Carlo runs: {value}"
+def update_output_div(value, data):
+    data = value
+    return data, f"Number of Monte Carlo runs: {value}"
 
 
 @app.callback(
+    Output("store-N", "data"),
     Output(component_id="output-N-value", component_property="children"),
     Input(component_id="input-N", component_property="value"),
+    State("store-N", "data"),
 )
-def update_output_div(value):
-    return f"Population size: {value}"
+def update_output_div(value, data):
+    data = value
+    return data, f"Population size: {value}"
+
+
+@app.callback(
+    Output("store-date-range", "data"),
+    Input("date-picker-select", "start_date"),
+    Input("date-picker-select", "end_date"),
+    State("store-date-range", "data"),
+)
+def update_output_div(start_date, end_date, data):
+    data = data or dict()
+    data["start_date"] = start_date
+    data["end_date"] = end_date
+    return data
 
 
 # Run the server
