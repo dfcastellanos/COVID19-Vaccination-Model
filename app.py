@@ -505,7 +505,6 @@ def update_figures(
     # model results
     model_results,
 ):
-
     # we can re-use previous model results if we must update the figure but
     # only the country selection changed. For that, we can check the callback
     # contex and see if the trigger was the run button being pressed. If not,
@@ -562,20 +561,20 @@ def update_figures(
             n_rep,
         )
 
-        # evaluate the agnostics population from the pro and anti vaccines samples
-        p_soft_no_values = 100 * np.array(p_soft_no_values)
-        a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
-        b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
-        a_str = "{0:.0f}".format(a)
-        b_str = "{0:.0f}".format(b)
-        # if the uncertainty interval is smaller than 1%, report one value instead of the interval
-        if abs(a - b) < 1:
-            msg_agnostics_pct += a_str + "%"
+        if params_combinations is not None:
+            # evaluate the agnostics population from the pro and anti vaccines samples
+            p_soft_no_values = 100 * np.array(p_soft_no_values)
+            a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
+            b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
+            a_str = "{0:.0f}".format(a)
+            b_str = "{0:.0f}".format(b)
+            # if the uncertainty interval is smaller than 1%, report one value instead of the interval
+            if abs(a - b) < 1:
+                msg_agnostics_pct += a_str + "%"
+            else:
+                msg_agnostics_pct += a_str + " - " + b_str + "%"
         else:
-            msg_agnostics_pct += a_str + " - " + b_str + "%"
-
-        if params_combinations is None:
-            msg_error += "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
+            msg_error = "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
             return fig, None, msg_agnostics_pct, msg_error, model_results
 
         model_results = run_model_sampling(
@@ -584,9 +583,9 @@ def update_figures(
 
         model_results["dv_lower"][model_results["dv_lower"] < 0] = 0.0
 
-        if model_results is None:
-            msg_error = "ERROR: Maximum computation time of 30s exceeded. Please reduce the number of Monte Carlo runs or the population size."
-            return fig, None, msg_agnostics_pct, msg_error, model_results
+        number_finished_samples = model_results["number_finished_samples"]
+        if number_finished_samples < len(params_combinations):
+            msg_error = f"ERROR: Maximum computation time of 30s exceeded. Only {number_finished_samples} of the desired {len(params_combinations)} Monte Carlo runs were performed."
 
     # the first automatic call will have no stored model_results and it will be None
     if model_results is not None:

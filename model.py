@@ -102,16 +102,19 @@ def run_model_sampling(params_sets, start_date, end_date, CI, N):
 
     pv = list()
     dv = list()
+    number_finished_samples = 0
     for p_yes, p_hard_no, pressure, tau, nv_0, nv_max in params_sets:
         pv_, dv_ = run_single_realization(
             p_yes, p_hard_no, pressure, tau, nv_0, nv_max, max_days, N
         )
-        elapsed_time = time.time() - starting_time
-        if elapsed_time > 30:
-            return None
-
         pv.append(pv_)
         dv.append(dv_)
+        number_finished_samples += 1
+
+        elapsed_time = time.time() - starting_time
+        if elapsed_time > 30:
+            break
+
     pv = np.vstack(pv)
     dv = np.vstack(dv)
 
@@ -149,6 +152,7 @@ def run_model_sampling(params_sets, start_date, end_date, CI, N):
         "dv_mean": dv_mean,
         "dv_upper": dv_CI[1],
         "dv_lower": dv_CI[0],
+        "number_finished_samples": number_finished_samples,
     }
 
     return data
