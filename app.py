@@ -510,9 +510,9 @@ def update_figures(
     # only the country selection changed. For that, we can check the callback
     # contex and see if the trigger was the run button being pressed. If not,
     # we can read the stored model results and resuse them
-    # ctx = dash.callback_context.triggered
-    # assert len(ctx)==1
-    # update_model = ctx[0]['prop_id'] == 'run-button.n_clicks'
+    ctx = dash.callback_context.triggered
+    assert len(ctx)==1
+    update_model = ctx[0]['prop_id'] == 'run-button.n_clicks'
 
     # instead of using the stored last model run, we define a seed so that the
     # values obtained from calling sample_param_combinations are
@@ -521,7 +521,7 @@ def update_figures(
     # repeat exactly so we can leverage this by using the @functools.lru_cache
     # decorator on run_model_sampling. In this way the results are automatically
     # cached and reused when the exactly the same input repeats
-    np.random.seed(12345)
+    # np.random.seed(12345)
 
     # default output messages
     msg_agnostics_pct = "Agnosticts: "
@@ -541,47 +541,48 @@ def update_figures(
     # make sure that the run button has already been pressed once
     if n_clicks is not None:
 
-        # ---- sample the model with the selected parameters ----
-
-        start_date = dt.strptime(date_range["start_date"].split("T")[0], "%Y-%m-%d")
-        end_date = dt.strptime(date_range["end_date"].split("T")[0], "%Y-%m-%d")
-
-        # # sliders use values 0-100
-        params_combinations, p_soft_no_values = sample_param_combinations(
-            np.array(p_yes_bounds) / 100,
-            np.array(p_hard_no_bounds) / 100,
-            np.array(pressure_bounds) / 100,
-            np.array(tau_bounds),
-            np.array(nv_0_bounds) / 100,
-            np.array(nv_max_bounds) / 100,
-            n_rep,
-        )
-
-        # evaluate the agnostics population from the pro and anti vaccines samples
-        p_soft_no_values = 100 * np.array(p_soft_no_values)
-        a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
-        b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
-        a_str = "{0:.0f}".format(a)
-        b_str = "{0:.0f}".format(b)
-        # if the uncertainty interval is smaller than 1%, report one value instead of the interval
-        if abs(a - b) < 1:
-            msg_agnostics_pct += a_str + "%"
-        else:
-            msg_agnostics_pct += a_str + " - " + b_str + "%"
-
-        if params_combinations is None:
-            msg_error += "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
-            return model_results, fig, None, msg_agnostics_pct, msg_error
-
-        model_results = run_model_sampling(
-            params_combinations, start_date, end_date, CI / 100, N
-        )
-
-        model_results["dv_lower"][model_results["dv_lower"] < 0] = 0.0
-
-        if model_results is None:
-            msg_error = "ERROR: Maximum computation time of 30s exceeded. Please reduce the number of Monte Carlo runs or the population size."
-            return model_results, fig, None, msg_agnostics_pct, msg_error
+        if update_model:
+            # ---- sample the model with the selected parameters ----
+    
+            start_date = dt.strptime(date_range["start_date"].split("T")[0], "%Y-%m-%d")
+            end_date = dt.strptime(date_range["end_date"].split("T")[0], "%Y-%m-%d")
+    
+            # # sliders use values 0-100
+            params_combinations, p_soft_no_values = sample_param_combinations(
+                np.array(p_yes_bounds) / 100,
+                np.array(p_hard_no_bounds) / 100,
+                np.array(pressure_bounds) / 100,
+                np.array(tau_bounds),
+                np.array(nv_0_bounds) / 100,
+                np.array(nv_max_bounds) / 100,
+                n_rep,
+            )
+    
+            # evaluate the agnostics population from the pro and anti vaccines samples
+            p_soft_no_values = 100 * np.array(p_soft_no_values)
+            a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
+            b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
+            a_str = "{0:.0f}".format(a)
+            b_str = "{0:.0f}".format(b)
+            # if the uncertainty interval is smaller than 1%, report one value instead of the interval
+            if abs(a - b) < 1:
+                msg_agnostics_pct += a_str + "%"
+            else:
+                msg_agnostics_pct += a_str + " - " + b_str + "%"
+    
+            if params_combinations is None:
+                msg_error += "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
+                return fig, None, msg_agnostics_pct, msg_error, model_results
+    
+            model_results = run_model_sampling(
+                params_combinations, start_date, end_date, CI / 100, N
+            )
+    
+            model_results["dv_lower"][model_results["dv_lower"] < 0] = 0.0
+    
+            if model_results is None:
+                msg_error = "ERROR: Maximum computation time of 30s exceeded. Please reduce the number of Monte Carlo runs or the population size."
+                return fig, None, msg_agnostics_pct, msg_error, model_results
 
         # ---- plot model results ----
 
@@ -655,7 +656,6 @@ def update_figures(
         )
 
     # ----- add curves with data from the selected countries ----
-    print(selected_countries)
     df = country_data["people_fully_vaccinated_per_hundred"]
     for i, country in enumerate(selected_countries):
         g = df[country].dropna()
