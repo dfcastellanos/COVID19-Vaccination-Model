@@ -510,11 +510,11 @@ def update_figures(
     # only the country selection changed. For that, we can check the callback
     # contex and see if the trigger was the run button being pressed. If not,
     # we can read the stored model results and resuse them
-    # ctx = dash.callback_context.triggered
-    # assert len(ctx)==1
-    # update_model = ctx[0]['prop_id'] == 'run-button.n_clicks'
+    ctx = dash.callback_context.triggered
+    assert len(ctx) == 1
+    update_model = ctx[0]["prop_id"] == "run-button.n_clicks"
 
-    # instead of using the stored last model run, we define a seed so that the
+    # another options is using the stored last model run, we define a seed so that the
     # values obtained from calling sample_param_combinations are
     # repeated when no changes from the GUI components are mande.
     # This means that the parameters to run_model_sampling
@@ -522,6 +522,11 @@ def update_figures(
     # decorator on run_model_sampling. In this way the results are automatically
     # cached and reused when the exactly the same input repeats
     np.random.seed(12345)
+
+    # NOTE: although the second option shoulb be enough, we enable the first option,
+    # since when the app is deployed in Heroku the second one does not caches the results.
+    # This means that a repeated call to the model will be re-run, but if we modify
+    # the selection of countries it won't run again
 
     # default output messages
     msg_agnostics_pct = "Agnosticts: "
@@ -538,8 +543,8 @@ def update_figures(
 
     colors = px.colors.qualitative.Safe
 
-    # make sure that the run button has already been pressed once
-    if n_clicks is not None:
+    # check n_clicks to make sure that the run button has already been pressed once
+    if update_model and n_clicks is not None:
 
         # ---- sample the model with the selected parameters ----
 
@@ -571,7 +576,7 @@ def update_figures(
 
         if params_combinations is None:
             msg_error += "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
-            return model_results, fig, None, msg_agnostics_pct, msg_error
+            return fig, None, msg_agnostics_pct, msg_error, model_results
 
         model_results = run_model_sampling(
             params_combinations, start_date, end_date, CI / 100, N
@@ -581,8 +586,10 @@ def update_figures(
 
         if model_results is None:
             msg_error = "ERROR: Maximum computation time of 30s exceeded. Please reduce the number of Monte Carlo runs or the population size."
-            return model_results, fig, None, msg_agnostics_pct, msg_error
+            return fig, None, msg_agnostics_pct, msg_error, model_results
 
+    # the first automatic call will have no stored model_results and it will be None
+    if model_results is not None:
         # ---- plot model results ----
 
         fig = add_line(
@@ -655,7 +662,6 @@ def update_figures(
         )
 
     # ----- add curves with data from the selected countries ----
-    print(selected_countries)
     df = country_data["people_fully_vaccinated_per_hundred"]
     for i, country in enumerate(selected_countries):
         g = df[country].dropna()
