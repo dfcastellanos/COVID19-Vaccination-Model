@@ -53,14 +53,13 @@ def get_country_data():
 
 avail_countries, country_data = get_country_data()
 
+storage_type = "memory"
 
 tab_style = {"padding-top": 7}
 
 tab_selected_style = {"padding-top": 7}
 
 tabs_styles = {"height": "44px"}
-
-style_controls = {"height": "33vh"}
 
 
 def generate_population_controls():
@@ -79,7 +78,7 @@ def generate_population_controls():
                 pushable=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-p-yes", storage_type="memory"),
+            dcc.Store(id="store-p-yes", storage_type=storage_type),
             html.Br(),
             html.Div(id="output-p-hard-no-value"),
             dcc.RangeSlider(
@@ -92,7 +91,7 @@ def generate_population_controls():
                 pushable=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-p-hard-no", storage_type="memory"),
+            dcc.Store(id="store-p-hard-no", storage_type=storage_type),
             html.Br(),
             html.Div(id="agnostics-pct-msg"),
             html.Br(),
@@ -108,9 +107,8 @@ def generate_population_controls():
                 pushable=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-pressure", storage_type="memory"),
+            dcc.Store(id="store-pressure", storage_type=storage_type),
         ],
-        style=style_controls,
     )
 
 
@@ -130,7 +128,7 @@ def generate_vaccine_controls():
                 pushable=0.02,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-nv0", storage_type="memory"),
+            dcc.Store(id="store-nv0", storage_type=storage_type),
             html.Br(),
             html.Div(id="output-tau-value"),
             dcc.RangeSlider(
@@ -143,7 +141,7 @@ def generate_vaccine_controls():
                 pushable=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-tau", storage_type="memory"),
+            dcc.Store(id="store-tau", storage_type=storage_type),
             html.Br(),
             html.Div(id="output-nvmax-value"),
             dcc.RangeSlider(
@@ -156,9 +154,8 @@ def generate_vaccine_controls():
                 pushable=0.1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-nvmax", storage_type="memory"),
+            dcc.Store(id="store-nvmax", storage_type=storage_type),
         ],
-        style=style_controls,
     )
 
 
@@ -177,7 +174,7 @@ def generate_sampling_controls():
                 step=10,
                 debounce=True,
             ),
-            dcc.Store(id="store-nrep", storage_type="memory"),
+            dcc.Store(id="store-nrep", storage_type=storage_type),
             html.Br(),
             html.Br(),
             html.Div(id="output-N-value"),
@@ -190,7 +187,7 @@ def generate_sampling_controls():
                 step=10,
                 debounce=True,
             ),
-            dcc.Store(id="store-N", storage_type="memory"),
+            dcc.Store(id="store-N", storage_type=storage_type),
             html.Br(),
             html.Br(),
             html.Div(id="output-CI-value"),
@@ -203,9 +200,8 @@ def generate_sampling_controls():
                 step=5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-CI", storage_type="memory"),
+            dcc.Store(id="store-CI", storage_type=storage_type),
         ],
-        style=style_controls,
     )
 
 
@@ -214,7 +210,6 @@ def generate_country_and_date_controls():
     return html.Div(
         id="contry-date-controls",
         children=[
-            html.Hr(style={"height": "2px"}),
             html.P("Date range"),
             dcc.DatePickerRange(
                 id="date-picker-select",
@@ -223,7 +218,7 @@ def generate_country_and_date_controls():
                 display_format="MMM Do, YY",
                 initial_visible_month=dt.today(),
             ),
-            dcc.Store(id="store-date-range", storage_type="memory"),
+            dcc.Store(id="store-date-range", storage_type=storage_type),
             html.Br(),
             html.Br(),
             html.P("Add country"),
@@ -233,7 +228,7 @@ def generate_country_and_date_controls():
                 value=["Germany", "United States", "Russia"],
                 multi=True,
             ),
-            dcc.Store(id="store-countries", storage_type="memory"),
+            dcc.Store(id="store-countries", storage_type=storage_type),
         ],
     )
 
@@ -255,7 +250,7 @@ def generate_plots_section():
                     "showTips": True,
                 },
                 style={
-                    # "width": "130vh",
+                    "width": "127vh",
                     "height": "80vh",
                     # "display": "inline-block",
                     # "overflow": "hidden",
@@ -265,7 +260,7 @@ def generate_plots_section():
                     # "transform": "translate(-50%, -50%)"
                 },
             ),
-            dcc.Store(id="store-model-results", storage_type="memory"),
+            dcc.Store(id="store-model-results", storage_type=storage_type),
         ],
     )
 
@@ -337,28 +332,30 @@ app.layout = html.Div(
             id="left-column",
             className="three columns",
             children=[
-                dcc.Tabs(
-                    children=[
-                        dcc.Tab(
-                            label="Population",
-                            children=[html.Br(), generate_population_controls()],
-                            style=tab_style,
-                            selected_style=tab_selected_style,
-                        ),
-                        dcc.Tab(
-                            label="Vaccines",
-                            children=[html.Br(), generate_vaccine_controls()],
-                            style=tab_style,
-                            selected_style=tab_selected_style,
-                        ),
-                        dcc.Tab(
-                            label="Sampling",
-                            children=[html.Br(), generate_sampling_controls()],
-                            style=tab_style,
-                            selected_style=tab_selected_style,
-                        ),
-                    ],
-                    style=tabs_styles,
+                html.Div(
+                    dcc.Tabs(
+                        children=[
+                            dcc.Tab(
+                                label="Population",
+                                children=[html.Br(), generate_population_controls()],
+                                style=tab_style,
+                                selected_style=tab_selected_style,
+                            ),
+                            dcc.Tab(
+                                label="Vaccines",
+                                children=[html.Br(), generate_vaccine_controls()],
+                                style=tab_style,
+                                selected_style=tab_selected_style,
+                            ),
+                            dcc.Tab(
+                                label="Sampling",
+                                children=[html.Br(), generate_sampling_controls()],
+                                style=tab_style,
+                                selected_style=tab_selected_style,
+                            ),
+                        ],
+                        style=tabs_styles,
+                    ),
                 ),
                 html.Center(
                     [
@@ -367,10 +364,11 @@ app.layout = html.Div(
                             id="ls-loading-2",
                             children=[html.Div([html.Div(id="ls-loading-output-2")])],
                             type="circle",
-                            style={"scale": "2"},
+                            style={"scale": "1.5"},
                         ),
                     ]
                 ),
+                html.Hr(style={"height": "2px"}),
                 generate_country_and_date_controls(),
                 html.Br(),
                 html.Div(id="error-msg", style={"color": "red"}),
@@ -550,6 +548,8 @@ def update_figures(
             "Vaccines received per hundred",
             "Vaccines in stock per hundred",
         ),
+        horizontal_spacing=0.08,
+        vertical_spacing=0.15,
     )
 
     colors = px.colors.qualitative.Safe
@@ -679,7 +679,7 @@ def update_figures(
                 )
 
     fig.update_yaxes(range=[0, 100], row=1, col=1)
-    # fig.update_layout(height=400, width=1100)
+    fig.update_layout(margin=dict(l=0, r=0, b=0, t=50))  # height=400, width=1100)
 
     return fig, None, msg_agnostics_pct, msg_error, model_results
 
