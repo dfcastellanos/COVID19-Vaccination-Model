@@ -181,9 +181,9 @@ def generate_sampling_controls():
             dcc.Input(
                 id="input-N",
                 type="number",
-                value=1000,
-                min=300,
-                max=10000,
+                value=300,
+                min=100,
+                max=5000,
                 step=10,
                 debounce=True,
             ),
