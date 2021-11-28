@@ -360,7 +360,17 @@ app.layout = html.Div(
                     ],
                     style=tabs_styles,
                 ),
-                html.Center(html.Button("Run", id="run-button")),
+                html.Center(
+                    [
+                        html.Button("Run", id="run-button"),
+                        dcc.Loading(
+                            id="ls-loading-2",
+                            children=[html.Div([html.Div(id="ls-loading-output-2")])],
+                            type="circle",
+                            style={"scale": "2"},
+                        ),
+                    ]
+                ),
                 generate_country_and_date_controls(),
                 html.Br(),
                 html.Div(id="error-msg", style={"color": "red"}),
@@ -377,13 +387,6 @@ app.layout = html.Div(
                             label="Results",
                             children=[
                                 generate_plots_section(),
-                                dcc.Loading(
-                                    id="ls-loading-2",
-                                    children=[
-                                        html.Div([html.Div(id="ls-loading-output-2")])
-                                    ],
-                                    type="circle",
-                                ),
                             ],
                             style=tab_style,
                             selected_style=tab_selected_style,
