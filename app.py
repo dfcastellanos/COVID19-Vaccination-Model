@@ -74,9 +74,9 @@ def generate_population_controls():
                 min=0.0,
                 max=100,
                 value=[60, 70],
-                allowCross=False,
                 marks={"0": "0%", "100": "100%"},
                 step=1,
+                pushable=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-p-yes", storage_type="memory"),
@@ -87,9 +87,9 @@ def generate_population_controls():
                 min=0.0,
                 max=100,
                 value=[15, 25],
-                allowCross=False,
                 marks={"0": "0%", "100": "100%"},
                 step=1,
+                pushable=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-p-hard-no", storage_type="memory"),
@@ -103,9 +103,9 @@ def generate_population_controls():
                 min=0.0,
                 max=10,
                 value=[2, 5],
-                allowCross=False,
                 marks={"0": "0%", "10": "10%"},
                 step=0.5,
+                pushable=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-pressure", storage_type="memory"),
@@ -125,9 +125,9 @@ def generate_vaccine_controls():
                 min=0.02,
                 max=1.0,
                 value=[0.04, 0.2],
-                allowCross=False,
                 marks={"0.02": "0.02%", "1": "1%"},
                 step=0.02,
+                pushable=0.02,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-nv0", storage_type="memory"),
@@ -138,9 +138,9 @@ def generate_vaccine_controls():
                 min=1,
                 max=20,
                 value=[4, 5],
-                allowCross=False,
                 marks={"1": "1 week", "20": "20 weeks"},
                 step=0.5,
+                pushable=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-tau", storage_type="memory"),
@@ -151,9 +151,9 @@ def generate_vaccine_controls():
                 min=0.1,
                 max=10,
                 value=[4, 7],
-                allowCross=False,
                 marks={"0.1": "0.1%", "10": "10%"},
-                step=1e-1,
+                step=0.1,
+                pushable=0.1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-nvmax", storage_type="memory"),
@@ -531,13 +531,13 @@ def update_figures(
     msg_agnostics_pct = "Agnosticts: "
     msg_error = ""
 
-    to_plot =  [
-                "people_fully_vaccinated_per_hundred",
-                "daily_vaccinations_per_million",
-                "cum_number_vac_received_per_hundred",
-                "vaccines_in_stock_per_hundred",
-                ]
-    
+    to_plot = [
+        "people_fully_vaccinated_per_hundred",
+        "daily_vaccinations_per_million",
+        "cum_number_vac_received_per_hundred",
+        "vaccines_in_stock_per_hundred",
+    ]
+
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -548,7 +548,7 @@ def update_figures(
             "Vaccines in stock per hundred",
         ),
     )
-    
+
     colors = px.colors.qualitative.Safe
 
     # check n_clicks to make sure that the run button has already been pressed once
@@ -593,7 +593,6 @@ def update_figures(
         number_finished_samples = model_results["number_finished_samples"]
         if number_finished_samples < len(params_combinations):
             msg_error = f"ERROR: Maximum computation time of 30s exceeded. Only {number_finished_samples} of the desired {len(params_combinations)} Monte Carlo runs were performed."
-
 
     for n, k in enumerate(to_plot):
 
@@ -647,18 +646,31 @@ def update_figures(
             for ncolor, country in enumerate(selected_countries):
                 g = df[country].dropna()
                 fig = add_line(
-                    fig, g.index, g, colors[ncolor + 1], country, i, j, width=1, annotation=True
+                    fig,
+                    g.index,
+                    g,
+                    colors[ncolor + 1],
+                    country,
+                    i,
+                    j,
+                    width=1,
+                    annotation=True,
                 )
         else:
             # Some of the results that we obtain from the model do not have equivalent real world data.
             # This causes some plots not to show up
             d0 = start_date if model_results is not None else 0
             fig = add_line(
-                    fig, [d0], [0], colors[0], 'No data to show', i, j, width=1, annotation=True
-                )
-            
-
-
+                fig,
+                [d0],
+                [0],
+                colors[0],
+                "No data to show",
+                i,
+                j,
+                width=1,
+                annotation=True,
+            )
 
     fig.update_yaxes(range=[0, 100], row=1, col=1)
     # fig.update_layout(height=400, width=1100)
