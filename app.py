@@ -531,6 +531,13 @@ def update_figures(
     msg_agnostics_pct = "Agnosticts: "
     msg_error = ""
 
+    to_plot =  [
+                "people_fully_vaccinated_per_hundred",
+                "daily_vaccinations_per_million",
+                "cum_number_vac_received_per_hundred",
+                "vaccines_in_stock_per_hundred",
+                ]
+    
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -541,7 +548,7 @@ def update_figures(
             "Vaccines in stock per hundred",
         ),
     )
-
+    
     colors = px.colors.qualitative.Safe
 
     # check n_clicks to make sure that the run button has already been pressed once
@@ -587,22 +594,17 @@ def update_figures(
         if number_finished_samples < len(params_combinations):
             msg_error = f"ERROR: Maximum computation time of 30s exceeded. Only {number_finished_samples} of the desired {len(params_combinations)} Monte Carlo runs were performed."
 
-    # the first automatic call will have no stored model_results and it will be None
-    if model_results is not None:
+
+    for n, k in enumerate(to_plot):
+
+        i, j = np.unravel_index(n, [2, 2])
+        i += 1
+        j += 1
+
         # ---- plot model results ----
+        # the first automatic call will have no stored model_results and it will be None
 
-        for n, k in enumerate(
-            [
-                "people_fully_vaccinated_per_hundred",
-                "daily_vaccinations_per_million",
-                "cum_number_vac_received_per_hundred",
-                "vaccines_in_stock_per_hundred",
-            ]
-        ):
-
-            i, j = np.unravel_index(n, [2, 2])
-            i += 1
-            j += 1
+        if model_results is not None:
 
             df = model_results[k]
             fig = add_line(
@@ -639,20 +641,24 @@ def update_figures(
                 annotation=False,
             )
 
-    # ----- add curves with data from the selected countries ----
-    df = country_data["people_fully_vaccinated_per_hundred"]
-    for i, country in enumerate(selected_countries):
-        g = df[country].dropna()
-        fig = add_line(
-            fig, g.index, g, colors[i + 1], country, 1, 1, width=1, annotation=True
-        )
+        # ----- add curves with data from the selected countries ----
+        if k in country_data.columns:
+            df = country_data[k]
+            for ncolor, country in enumerate(selected_countries):
+                g = df[country].dropna()
+                fig = add_line(
+                    fig, g.index, g, colors[ncolor + 1], country, i, j, width=1, annotation=True
+                )
+        else:
+            # Some of the results that we obtain from the model do not have equivalent real world data.
+            # This causes some plots not to show up
+            d0 = start_date if model_results is not None else 0
+            fig = add_line(
+                    fig, [d0], [0], colors[0], 'No data to show', i, j, width=1, annotation=True
+                )
+            
 
-    df = country_data["daily_vaccinations_per_million"]
-    for i, country in enumerate(selected_countries):
-        g = df[country].dropna()
-        fig = add_line(
-            fig, g.index, g, colors[i + 1], country, 1, 2, width=1, annotation=True
-        )
+
 
     fig.update_yaxes(range=[0, 100], row=1, col=1)
     # fig.update_layout(height=400, width=1100)
