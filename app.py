@@ -661,19 +661,22 @@ def update_figures(
                 )
         else:
             # Some of the results that we obtain from the model do not have equivalent real world data.
-            # This causes some plots not to show up
-            d0 = start_date if model_results is not None else 0
-            fig = add_line(
-                fig,
-                [d0],
-                [0],
-                colors[0],
-                "No data to show",
-                i,
-                j,
-                width=1,
-                annotation=True,
-            )
+            # This causes some plots not to show up initially, until the model has ben run at least once.
+            # If model results are not yet available, we place a 'no data' annotation in those plots.
+            # That will make Plotly draw the axes so the user will be aware of them from the begining.
+            if model_results is None:
+
+                fig = add_line(
+                    fig,
+                    [0],
+                    [0],
+                    colors[0],
+                    "No data to show",
+                    i,
+                    j,
+                    width=1,
+                    annotation=True,
+                )
 
     fig.update_yaxes(range=[0, 100], row=1, col=1)
     # fig.update_layout(height=400, width=1100)
