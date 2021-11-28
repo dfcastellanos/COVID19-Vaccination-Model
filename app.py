@@ -122,12 +122,12 @@ def generate_vaccine_controls():
             html.Div(id="output-nv0-value"),
             dcc.RangeSlider(
                 id="slider-nv0",
-                min=0.0,
+                min=0.02,
                 max=1.0,
-                value=[0.05, 0.2],
+                value=[0.04, 0.2],
                 allowCross=False,
-                marks={"0": "0%", "1": "1%"},
-                step=0.05,
+                marks={"0.02": "0.02%", "1": "1%"},
+                step=0.02,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-nv0", storage_type="memory"),
@@ -136,10 +136,10 @@ def generate_vaccine_controls():
             dcc.RangeSlider(
                 id="slider-tau",
                 min=1,
-                max=12,
+                max=20,
                 value=[4, 5],
                 allowCross=False,
-                marks={"1": "1 week", "12": "12 weeks"},
+                marks={"1": "1 week", "20": "20 weeks"},
                 step=0.5,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
@@ -149,10 +149,10 @@ def generate_vaccine_controls():
             dcc.RangeSlider(
                 id="slider-nvmax",
                 min=0.1,
-                max=20,
+                max=10,
                 value=[4, 7],
                 allowCross=False,
-                marks={"0.1": "0.1%", "20": "20%"},
+                marks={"0.1": "0.1%", "10": "10%"},
                 step=1e-1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
@@ -256,7 +256,7 @@ def generate_plots_section():
                 },
                 style={
                     # "width": "130vh",
-                    # "height": "50vh",
+                    "height": "80vh",
                     # "display": "inline-block",
                     # "overflow": "hidden",
                     # "position": "absolute",
@@ -532,11 +532,13 @@ def update_figures(
     msg_error = ""
 
     fig = make_subplots(
-        rows=1,
+        rows=2,
         cols=2,
         subplot_titles=(
             "People vaccinated per hundred",
             "Daily vaccinations per million",
+            "Vaccines received per hundred",
+            "Vaccines in stock per hundred",
         ),
     )
 
@@ -581,8 +583,6 @@ def update_figures(
             params_combinations, start_date, end_date, CI / 100, N
         )
 
-        model_results["dv_lower"][model_results["dv_lower"] < 0] = 0.0
-
         number_finished_samples = model_results["number_finished_samples"]
         if number_finished_samples < len(params_combinations):
             msg_error = f"ERROR: Maximum computation time of 30s exceeded. Only {number_finished_samples} of the desired {len(params_combinations)} Monte Carlo runs were performed."
@@ -591,74 +591,53 @@ def update_figures(
     if model_results is not None:
         # ---- plot model results ----
 
-        fig = add_line(
-            fig,
-            model_results["pv_dates"],
-            model_results["pv_mean"],
-            "royalblue",
-            "Model",
-            1,
-            1,
-            annotation=True,
-        )
-        fig = add_line(
-            fig,
-            model_results["pv_dates"],
-            model_results["pv_upper"],
-            colors[0],
-            f"Model CI={CI}%",
-            1,
-            1,
-            width=0,
-            annotation=False,
-        )
-        fig = add_line(
-            fig,
-            model_results["pv_dates"],
-            model_results["pv_lower"],
-            colors[0],
-            f"Model CI={CI}%",
-            1,
-            1,
-            width=0,
-            fill="tonexty",
-            annotation=False,
-        )
+        for n, k in enumerate(
+            [
+                "people_fully_vaccinated_per_hundred",
+                "daily_vaccinations_per_million",
+                "cum_number_vac_received_per_hundred",
+                "vaccines_in_stock_per_hundred",
+            ]
+        ):
 
-        fig = add_line(
-            fig,
-            model_results["dv_dates"],
-            model_results["dv_mean"],
-            "royalblue",
-            "Model",
-            1,
-            2,
-            annotation=True,
-        )
-        fig = add_line(
-            fig,
-            model_results["dv_dates"],
-            model_results["dv_upper"],
-            colors[0],
-            f"Model CI={CI}%",
-            1,
-            2,
-            width=0,
-            annotation=False,
-        )
+            i, j = np.unravel_index(n, [2, 2])
+            i += 1
+            j += 1
 
-        fig = add_line(
-            fig,
-            model_results["dv_dates"],
-            model_results["dv_lower"],
-            colors[0],
-            f"Model CI={CI}%",
-            1,
-            2,
-            width=0,
-            fill="tonexty",
-            annotation=False,
-        )
+            df = model_results[k]
+            fig = add_line(
+                fig,
+                df["dates"],
+                df["mean"],
+                "royalblue",
+                "Model",
+                i,
+                j,
+                annotation=True,
+            )
+            fig = add_line(
+                fig,
+                df["dates"],
+                df["upper"],
+                colors[0],
+                f"Model CI={CI}%",
+                i,
+                j,
+                width=0,
+                annotation=False,
+            )
+            fig = add_line(
+                fig,
+                df["dates"],
+                df["lower"],
+                colors[0],
+                f"Model CI={CI}%",
+                i,
+                j,
+                width=0,
+                fill="tonexty",
+                annotation=False,
+            )
 
     # ----- add curves with data from the selected countries ----
     df = country_data["people_fully_vaccinated_per_hundred"]
