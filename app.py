@@ -31,7 +31,7 @@ def get_country_data():
     columns_to_keep = [
         "location",
         "date",
-        "people_fully_vaccinated_per_hundred",
+        "people_vaccinated_per_hundred",
         "daily_vaccinations_per_million",
     ]
 
@@ -42,7 +42,7 @@ def get_country_data():
         df,
         columns="location",
         values=[
-            "people_fully_vaccinated_per_hundred",
+            "people_vaccinated_per_hundred",
             "daily_vaccinations_per_million",
         ],
         index="date",
@@ -67,22 +67,22 @@ def generate_population_controls():
     return html.Div(
         id="population-controls",
         children=[
-            html.Div(id="output-p-yes-value"),
+            html.Div(id="output-p-pro-value"),
             dcc.RangeSlider(
-                id="slider-p-yes",
+                id="slider-p-pro",
                 min=0.0,
                 max=100,
-                value=[60, 70],
+                value=[40, 50],
                 marks={"0": "0%", "100": "100%"},
                 step=1,
                 pushable=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-p-yes", storage_type=storage_type),
+            dcc.Store(id="store-p-pro", storage_type=storage_type),
             html.Br(),
-            html.Div(id="output-p-hard-no-value"),
+            html.Div(id="output-p-anti-value"),
             dcc.RangeSlider(
-                id="slider-p-hard-no",
+                id="slider-p-anti",
                 min=0.0,
                 max=100,
                 value=[15, 25],
@@ -91,7 +91,7 @@ def generate_population_controls():
                 pushable=1,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
-            dcc.Store(id="store-p-hard-no", storage_type=storage_type),
+            dcc.Store(id="store-p-anti", storage_type=storage_type),
             html.Br(),
             html.Div(id="agnostics-pct-msg"),
             html.Br(),
@@ -121,9 +121,9 @@ def generate_vaccine_controls():
             dcc.RangeSlider(
                 id="slider-nv0",
                 min=0.02,
-                max=1.0,
-                value=[0.04, 0.2],
-                marks={"0.02": "0.02%", "1": "1%"},
+                max=3.0,
+                value=[0.2, 0.3],
+                marks={"0.02": "0.02%", "3": "3%"},
                 step=0.02,
                 pushable=0.02,
                 tooltip={"placement": "bottom", "always_visible": False},
@@ -135,7 +135,7 @@ def generate_vaccine_controls():
                 id="slider-tau",
                 min=1,
                 max=20,
-                value=[4, 5],
+                value=[3, 5],
                 marks={"1": "1 week", "20": "20 weeks"},
                 step=0.5,
                 pushable=0.5,
@@ -169,23 +169,24 @@ def generate_sampling_controls():
                 id="input-nrep",
                 type="number",
                 value=100,
-                min=10,
-                max=3000,
-                step=10,
-                debounce=True,
+                min=1,
+                max=10000,
+                step=1,
+                debounce=False,
             ),
             dcc.Store(id="store-nrep", storage_type=storage_type),
-            html.Br(),
-            html.Br(),
-            html.Div(id="output-N-value"),
+            # html.Br(),
+            # html.Br(),
+            html.Div(id="output-N-value", style={'display':'none'}),
             dcc.Input(
                 id="input-N",
                 type="number",
-                value=300,
-                min=100,
-                max=5000,
+                value=50000,
+                min=1,
+                max=1000000,
                 step=10,
-                debounce=True,
+                debounce=False,
+                style={'display':'none'}
             ),
             dcc.Store(id="store-N", storage_type=storage_type),
             html.Br(),
@@ -469,8 +470,8 @@ def add_line(
     # countries and dates
     Input("country-select", "value"),
     # population parameters
-    State("store-p-yes", "data"),
-    State("store-p-hard-no", "data"),
+    State("store-p-pro", "data"),
+    State("store-p-anti", "data"),
     State("store-pressure", "data"),
     # vaccinations parameters
     State("store-tau", "data"),
@@ -491,8 +492,8 @@ def update_figures(
     # countries
     selected_countries,
     # populatio parameters
-    p_yes_bounds,
-    p_hard_no_bounds,
+    p_pro_bounds,
+    p_anti_bounds,
     pressure_bounds,
     # vaccinations parameters
     tau_bounds,
@@ -533,7 +534,7 @@ def update_figures(
     msg_error = ""
 
     to_plot = [
-        "people_fully_vaccinated_per_hundred",
+        "people_vaccinated_per_hundred",
         "daily_vaccinations_per_million",
         "cum_number_vac_received_per_hundred",
         "vaccines_in_stock_per_hundred",
@@ -562,10 +563,14 @@ def update_figures(
         start_date = dt.strptime(date_range["start_date"].split("T")[0], "%Y-%m-%d")
         end_date = dt.strptime(date_range["end_date"].split("T")[0], "%Y-%m-%d")
 
+        # if (nv_0_bounds[0]/100)*N < 1:
+            # msg_error = "WARNING: The initial stock of vaccines implies {0:.2f} vaccines initially available. Please, increase the lower bound for the initial stock or the population size so that 1 or more vaccines are available.".format((nv_0_bounds[0]/100)*N)
+            # return fig, None, msg_agnostics_pct, msg_error, model_results
+
         # # sliders use values 0-100
         params_combinations, p_soft_no_values = sample_param_combinations(
-            np.array(p_yes_bounds) / 100,
-            np.array(p_hard_no_bounds) / 100,
+            np.array(p_pro_bounds) / 100,
+            np.array(p_anti_bounds) / 100,
             np.array(pressure_bounds) / 100,
             np.array(tau_bounds),
             np.array(nv_0_bounds) / 100,
@@ -607,7 +612,6 @@ def update_figures(
         # the first automatic call will have no stored model_results and it will be None
 
         if model_results is not None:
-
             df = model_results[k]
             fig = add_line(
                 fig,
@@ -685,10 +689,10 @@ def update_figures(
 
 
 @app.callback(
-    Output("store-p-yes", "data"),
-    Output(component_id="output-p-yes-value", component_property="children"),
-    Input(component_id="slider-p-yes", component_property="value"),
-    State("store-p-yes", "data"),
+    Output("store-p-pro", "data"),
+    Output(component_id="output-p-pro-value", component_property="children"),
+    Input(component_id="slider-p-pro", component_property="value"),
+    State("store-p-pro", "data"),
 )
 def update_output_div(values, data):
     data = values
@@ -696,10 +700,10 @@ def update_output_div(values, data):
 
 
 @app.callback(
-    Output("store-p-hard-no", "data"),
-    Output(component_id="output-p-hard-no-value", component_property="children"),
-    Input(component_id="slider-p-hard-no", component_property="value"),
-    State("store-p-hard-no", "data"),
+    Output("store-p-anti", "data"),
+    Output(component_id="output-p-anti-value", component_property="children"),
+    Input(component_id="slider-p-anti", component_property="value"),
+    State("store-p-anti", "data"),
 )
 def update_output_div(values, data):
     data = values
