@@ -11,13 +11,11 @@ def run_single_realization(
 ):
 
     assert p_pro + p_anti <= 1.0
-
-    p_no_soft = 1 - (p_pro + p_anti)
+    p_agnostics = 1 - (p_pro + p_anti)
 
     n_pro = int(p_pro * N)
-    n_agnostics = int(p_no_soft * N)
-    n_anti = int(p_anti * N)
-    
+    n_agnostics = int(p_agnostics * N)
+
     F = lambda t: min(nv_0 * np.exp(np.log(2) * t / (tau * 7)), nv_max) * N
 
     day_number = 0
@@ -25,7 +23,7 @@ def run_single_realization(
     cum_number_vac_received = 0
     n_vaccinated = 0
     n_waiting = n_pro - n_vaccinated
-    
+
     people_vaccinated_per_hundred = list()
     daily_vaccinations_per_million = list()
     cum_number_vac_received_per_hundred = list()
@@ -33,7 +31,7 @@ def run_single_realization(
 
     while day_number < max_day_number:
 
-        #------ add arriving vaccines to the stock ------
+        # ------ add arriving vaccines to the stock ------
         if day_number % 7 == 0.0:
             nv_arriving = int(F(day_number))
         else:
@@ -42,10 +40,8 @@ def run_single_realization(
         assert nv_arriving >= 0
         vaccines_stock += nv_arriving
         cum_number_vac_received += nv_arriving
-        
-        n_waiting = n_pro - n_vaccinated
-        
-        #------  apply vaccines ------
+
+        # ------  apply vaccines ------
 
         # prob. of having it available does not take into account only people waitting, but the whole population
         # for example, if the population is big, the vaccines will be more spread and less likely to reach anyone
@@ -54,26 +50,27 @@ def run_single_realization(
         # 7 days and only ~2 days a week is possible to have it, we should multiply it by ~2/7 to get an effective
         # prob. per day;
         proc_vac_available = (2.0 / 7.0) * vaccines_stock / N
-        
-        delta_n_vacc = np.random.poisson(n_waiting * proc_vac_available)    
+
+        delta_n_vacc = np.random.poisson(n_waiting * proc_vac_available)
         # don't apply more vaccines than available
         delta_n_vacc = min(delta_n_vacc, vaccines_stock)
         # don't apply more vaccines than people waiting for it
         delta_n_vacc = min(delta_n_vacc, n_waiting)
         n_vaccinated += delta_n_vacc
+        n_waiting -= delta_n_vacc
         vaccines_stock -= delta_n_vacc
-        fract_pop_vaccinated = n_vaccinated/N    
-    
-        #------ convert agnostics ------
+        fract_pop_vaccinated = n_vaccinated / N
+
+        # ------ convert agnostics ------
         prob_change_mind = fract_pop_vaccinated * pressure
-        delta_n_pro = np.random.poisson(n_agnostics * prob_change_mind)        
+        delta_n_agnos = np.random.poisson(n_agnostics * prob_change_mind)
         # don't convert more agnostics than agnostics available
-        delta_n_pro = min(delta_n_pro, n_agnostics)
-        n_pro += delta_n_pro
-        n_agnostics -= delta_n_pro
-            
+        delta_n_agnos = min(delta_n_agnos, n_agnostics)
+        n_agnostics -= delta_n_agnos
+        n_waiting += delta_n_agnos
+
         day_number += 1
-    
+
         people_vaccinated_per_hundred.append(fract_pop_vaccinated * 100)
         daily_vaccinations_per_million.append(delta_n_vacc * 1e6 / N)
         cum_number_vac_received_per_hundred.append(cum_number_vac_received * 100 / N)
@@ -85,9 +82,8 @@ def run_single_realization(
         "cum_number_vac_received_per_hundred": cum_number_vac_received_per_hundred,
         "vaccines_in_stock_per_hundred": vaccines_in_stock_per_hundred,
     }
-    
-    return data
 
+    return data
 
 
 @functools.lru_cache(maxsize=10)
@@ -125,19 +121,20 @@ def run_model_sampling(params_sets, start_date, end_date, CI, N):
         df = pd.DataFrame(np.vstack(v).T, index=dates)
         # The model simulates the dynamics of the application of a single dosis, but actually
         # (most) those who got a first dosis, will get a second one ~30 days later. Since such second
-        # doses are included in the daily_vaccinations_per_million from the real-world data, 
-        # we must ialso ncluded them in the model results. For that, we shift the original applied 
-        # doses by 30 days and concatenate the DataFrames. 
-        # The fact that all the second doses are appended after all the first ones 
+        # doses are included in the daily_vaccinations_per_million from the real-world data,
+        # we must ialso ncluded them in the model results. For that, we shift the original applied
+        # doses by 30 days and concatenate the DataFrames.
+        # The fact that all the second doses are appended after all the first ones
         # doesn't matter since afterward we will reindex to compute a moving average
-        shifted_df = pd.DataFrame(np.vstack(v).T, index=dates+datetime.timedelta(days=30))
-        df = df.add(shifted_df, fill_value = 0.)
+        shifted_df = pd.DataFrame(
+            np.vstack(v).T, index=dates + datetime.timedelta(days=30)
+        )
+        df = df.add(shifted_df, fill_value=0.0)
         # compute averages over windows of 7 days, as in the real-world data
-        df = df.reindex( pd.date_range(start=start_date, end=end_date, freq="7d") )
+        df = df.reindex(pd.date_range(start=start_date, end=end_date, freq="7d"))
         # do not call df.index.values, because that transforms Timestamps to numpy.datetime, and plotly seems to prefer Timestamps
         data[k]["dates"] = df.index
         data[k]["samples"] = df.values.T
-
 
     # get confidence intervals for each date, computed accros samples
     data_CI = defaultdict(dict)
