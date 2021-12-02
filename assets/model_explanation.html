@@ -17,8 +17,8 @@
 <h2>Introduction</h2>
 
 <p>Vaccination
-campaigns can be regarded as relatively <strong>simple processes to
-model</strong> from a statistical perspective. One reason is that
+campaigns can be regarded as relatively simple processes to
+model from a statistical perspective. One reason is that
 vaccination campaigns typically proceed as designed by professionals,
 away from the media, and supported by a great deal of experience
 accumulated from years of repetition. In this conditions,
@@ -45,15 +45,15 @@ COVID-19 for several reasons:</font></p>
 </ul>
 <p>These points are the main reasons that make the COVID-19
 vaccination campaign special from a statistical modeling perspective.
-In this post, I propose a <strong>statistical model</strong> to
-capture the <strong>main characteristics</strong> of the evolution of
+The following <strong>statistical model</strong>
+captures the <strong>main characteristics</strong> of the evolution of
 the ongoing COVID-19 vaccination campaign in specific countries. With
 this model, users can test the effects of different vaccine
 production and delivery rates, the segmentation of the population
 into pro- and anti-vaccines, and the impact of social pressure on
-non-vaccinated people. Moreover, the approach naturally allows
-considering the uncertainty in the model parameters, allowing users
-to <strong>forecast worst and best-case scenarios</strong>.</p>
+non-vaccinated people. Moreover, thanks to Monte Carlo sampling,
+uncertainty in the model parameters can be handled in a straighforward
+manner, allowing users to <strong>forecast worst and best-case scenarios</strong>.</p>
 
 <h2>The model</h2>
 
@@ -213,12 +213,6 @@ received by the country, and the current number of doses in stock.
 Moreover, we also give <strong>confidence intervals</strong> for each
 of these quantities by computing the across-sample $\alpha$ and
 $1-\alpha$ quantiles.</p>
-
-<p>Reference <strong>real-world data</strong> for specific countries
-can be obtained from <a href="https://github.com/owid/covid-19-data">https://github.com/owid/covid-19-data</a>.</p>
-<p>
-
-
 
 
 </p>
