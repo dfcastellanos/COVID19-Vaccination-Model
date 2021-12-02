@@ -1,3 +1,15 @@
+"""
+    
+    License
+    -------
+    Copyright (C) 2021  - David Fernández Castellanos
+    
+    You can use this software, redistribute it, and/or modify it under the 
+    terms of the Creative Commons Attribution 4.0 International Public License.
+    
+
+"""
+
 import dash
 from dash import dcc
 from dash import html
