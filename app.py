@@ -292,8 +292,8 @@ def generate_about():
         
         ## Useful links:
         -   The author's website: [https://www.davidfcastellanos.com](https://www.davidfcastellanos.com)                    
-        -   The source code of the web App and the model back-end: [https://github.com/kastellane/MonteCarlo-Vaccination-Model/](https://github.com/kastellane/MonteCarlo-Vaccination-Model/)
-        -   An associated blog post with extra information: [https://www.davidfcastellanos.com/covid-19-vaccination-model/](https://www.davidfcastellanos.com/covid-19-vaccination-model/)
+        -   The source code of the web App and the model back-end: [https://github.com/kastellane/COVID19-Vaccination-Model](https://github.com/kastellane/COVID19-Vaccination-Model)
+        -   An associated blog post with extra information: [https://www.davidfcastellanos.com/covid-19-vaccination-model](https://www.davidfcastellanos.com/covid-19-vaccination-model)
         -   Real world data: [https://github.com/owid/covid-19-data](https://github.com/owid/covid-19-data)
             
         """
