@@ -1,0 +1,226 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+
+<link rel="stylesheet" href="base.css">
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript"
+  src="http://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+</head>
+<body lang="en-US" link="#000080" vlink="#800000" dir="ltr">
+
+<h2>Introduction</h2>
+
+<p>Vaccination
+campaigns can be regarded as relatively <strong>simple processes to
+model</strong> from a statistical perspective. One reason is that
+vaccination campaigns typically proceed as designed by professionals,
+away from the media, and supported by a great deal of experience
+accumulated from years of repetition. In this conditions,
+<strong>sociological factors</strong> are expected to play a minor
+role. However, these conditions do not entirely hold in the case of
+COVID-19 for several reasons:</font></p>
+<ul>
+	<li><p style="margin-bottom: 0in">Society is <strong>fully aware</strong>
+	of the process, arguably drawing the biggest mediatic attention. 
+	</p>
+	<li><p style="margin-bottom: 0in">Society is <strong>fragmented</strong>
+	into groups with different views on vaccines, trying to influence
+	each other's opinions. 
+	</p>
+	<li><p style="margin-bottom: 0in">The vaccines are produced,
+	delivered, and applied almost in real-time, so the vaccination
+	dynamics must be coupled with <strong>production and delivery
+	dynamics</strong>. 
+	</p>
+	<li><p>The <strong>uncertainty in the conditions</strong> under
+	which the vaccination is going to take place in a fastly evolving
+	scenario of competition between countries and new virus variants 
+	</p>
+</ul>
+<p>These points are the main reasons that make the COVID-19
+vaccination campaign special from a statistical modeling perspective.
+In this post, I propose a <strong>statistical model</strong> to
+capture the <strong>main characteristics</strong> of the evolution of
+the ongoing COVID-19 vaccination campaign in specific countries. With
+this model, users can test the effects of different vaccine
+production and delivery rates, the segmentation of the population
+into pro- and anti-vaccines, and the impact of social pressure on
+non-vaccinated people. Moreover, the approach naturally allows
+considering the uncertainty in the model parameters, allowing users
+to <strong>forecast worst and best-case scenarios</strong>.</p>
+
+<h2>The model</h2>
+
+<h3>Population segments</h3>
+
+<p>We consider a population of size $N$ <strong>segmented into three
+groups</strong>, depending on their views on vaccines:</p>
+<ul>
+	<li><p style="margin-bottom: 0in"><strong>Pro-vaccines:</strong>
+	they take the vaccine as soon as they have the chance 
+	</p>
+	<li><p style="margin-bottom: 0in"><strong>Anti-vaccines:</strong>
+	they will never take a vaccine 
+	</p>
+	<li><p><strong>Agnostics:</strong> they initially hesitate, but
+	given enough social pressure, they will take it 
+	</p>
+</ul>
+<p>The size of each group is given by $n_{\rm pro} &lt; N$, $n_{\rm
+anti} &lt; N$ and $n_{\rm agnos} &lt; N$, with $n_{\rm pro}+n_{\rm
+anti}+n_{\rm agnos}=N$. We will denote the <strong>number of
+vaccinated people</strong> by $n_{\rm vacc}$ and the number of <strong>people
+currently waiting for a dosis</strong> by $n_{\rm wait}$. The latter
+refers to people who want to be vaccinated but didn't have yet.</p>
+
+<h3>Vaccination dynamics</h3>
+
+<p>The following three steps are <strong>applied</strong> <strong>daily</strong>:</p>
+
+<h4>1. Production and delivery of new doses</h4>
+<p>The <strong>day number</strong> $t$ is increased by a unit, $t
+\leftarrow t+1$. The <strong>first day of each week</strong>, the
+number of newly <strong>arriving vaccines</strong> $\Delta n_{\rm
+stock}$ is computed as</p>
+<p>\[\Delta n_{\rm stock}(t) = n_{\rm stock,0} \cdot
+\textrm{exp}\left( -\frac{t}{\tau}\frac{\textrm{log}(2)}{7} \right)
+\]</p>
+<p>where $\Delta n_{\rm stock}$ <strong>grows</strong> <strong>exponentially</strong>
+with $t$ to meet a very high demand. In this expression, $n_{\rm
+stock,0}$ is the number of doses in stock at the begining of the
+campaign. The factor $\textrm{log}(2)/7$ in this expressions means
+that $\tau$ is the duplication time in weeks (i.e., the number weeks
+it takes for the production of vaccines to increase by a factor of
+two, $\Delta n_{\rm stock}(t^{\prime}) = 2\Delta n_{\rm stock}(t)$ if
+$t^{\prime} = t+7\tau$). Since $\Delta n_{\rm stock}$ cannot grow
+indefinitely, it is throttled at a <strong>maximum weekly delivery
+capacity</strong> $\Delta n_{\rm max}$. Thus,
+\[\Delta n_{\rm stock} \leftarrow \textrm{min} \{ \Delta n_{\rm stock}, \Delta n_{\rm max} \}\]</p>
+<p>The number of <strong>doses in stock</strong>, $n_{\rm stock}$ is
+then updated as</p>
+
+<p>\[n_{\rm stock} \leftarrow n_{\rm stock} + \Delta n_{\rm stock}\]</p>
+
+<h4>2. Vaccination of people that is waiting for it</h4>
+<p>The n<strong>umber of people vaccinated in one day</strong>,
+$\Delta n_{\rm vacc}$ is a Poisson random variable with parameter
+$\lambda = n_{\rm wait} \cdot p_{\rm avail}$, where $p_{\rm avail} =
+(2/7) n_{\rm stock} / N$ is the probability that a person has the
+vaccine available. The factor 2/7 accounts for vaccinations occurring
+only two days a week, giving an <strong>effective per-day
+probability</strong>. We must take into account that the number of
+vaccines applied on a day cannot exceed the number of doses in stock
+nor the number of people currently waiting to be vaccinated, thus</p>
+<p>\[ \Delta n_{\rm vacc} \leftarrow \textrm{min} \{ \Delta n_{\rm
+vacc}, n_{\rm stock}, n_{\rm wait} \} \]</p>
+<p>Then, the number of vaccinated persons, vaccines in stock and
+people currently waiting for a vaccine are updated
+as,
+\begin{align*}
+n_{\rm vacc} &amp;\leftarrow n_{\rm
+vacc}+\Delta n_{\rm vacc} \\
+n_{\rm stock} &amp;\leftarrow
+n_{\rm stock}-\Delta n_{\rm vacc}\\
+n_{\rm wait} &amp;\leftarrow
+n_{\rm wait}-\Delta n_{\rm vacc}
+\end{align*}</p>
+
+<h4>3. Social pressure on the agnostics</h4>
+
+<p>The number of agnostic people that <strong>change their mind</strong>
+and decide to get vaccinated, $\Delta n_{\rm agnos}$, is a Poisson
+random variable with parameter $\lambda = n_{\rm agnos} \cdot p_{\rm
+change}$. The probability $p_{\rm change}$ is that of an agnostic
+person changing their mind during a day, and is approximated by
+$p_{\rm change} = \rho \cdot n_{\rm vacc}/N$. The term $n_{\rm
+vacc}/N$ acts as a proxy for <strong>social pressure</strong>.
+Specifically, the higher the fraction of the vaccinated population,
+the higher the pressure on the agnostics to do the same. The factor
+$\rho$ allows tuning the strength of this effect. The value of $\rho$
+emerges from complex social dynamics beyond the scope of this model.
+Thus, its value can only be determined during a model training step.
+We must take into account that the number of conversions cannot
+overcome the current number of agnostics, thus
+\[ \Delta n_{\rm agnos} \leftarrow \textrm{min} \{ \Delta n_{\rm agnos}, n_{\rm agnos} \} \]
+Then, the number of agnostics and waiting people
+are updated as,
+\begin{align*}
+n_{\rm agnos} &amp;\leftarrow
+n_{\rm agnos}-\Delta n_{\rm agnos} \\
+n_{\rm wait} &amp;\leftarrow
+n_{\rm wait}+\Delta n_{\rm agnos}
+\end{align*}</p>
+
+<h3>Initial values</h3>
+<p>The values of the variables during the first day, i.e., at $t=0$
+are,
+\begin{align*}
+n_{\rm vacc} &amp;= 0\\
+n_{\rm
+stock} &amp;= n_{\rm stock,0}\\
+n_{\rm wait} &amp;= n_{\rm
+pro}\\
+n_{\rm agnos} &amp;= |n_{\rm pro}-n_{\rm
+anti}|
+\end{align*}</p>
+
+<h2>Sampling the model</h2>
+
+<p>The model is <strong>sampled</strong> <strong>a number</strong>
+$N_{\rm samples}$ of times, where each sample corresponds to applying
+the three steps above until reaching a maximum number of days. The
+model's <strong>free parameters</strong> are the initial stock of
+vaccines $n_{\rm stock,0}$, the vaccines duplication time in weeks
+$\tau$, the maximum weekly delivery capacity $\Delta n_{\rm max}$,
+the prevalence of pro- and anti-vaccines, $p_{\rm pro}$ and $p_{\rm
+anti}$ respectively, and the social pressure parameter $\rho$.</p>
+<p>As discussed above, in a realistic situation, specifically during
+the initial stages of the COVID-19 vaccination campaign, the
+<strong>uncertainty in the model parameters</strong> can be
+considerable. Moreover, even if reasonable estimations could be made,
+it's still advisable to work with a range of values representing the
+best and worst-case scenarios for the sake of safety. To include the
+uncertainty in the parameters, we consider them as distributed
+according to specific <strong>probability distributions</strong>.
+Thus, for each simulated sample, we first draw the parameters from
+these distributions. For simplicity, we consider each parameter as<strong>
+uniformly distributed</strong> between an <strong>upper and a lower
+bound</strong>, which are specific for each parameter. In order to
+draw values of $p_{\rm pro}$ and $p_{\rm anti}$ such that $p_{\rm
+pro} + p_{\rm anti} &lt; 1$, rejection sampling is used.</p>
+<p>The value of the <strong>population size</strong> $N$ deserves
+particular comment. $N$ must be set before sampling as a free
+parameter. However, it does not necessarily need to mimic that of a
+real country. For low $N$, the model will yield results with higher
+across-sample variability. As $N$ increases, that variability drops.
+If we aim at simulating a small population, the value of $N$ must be
+set accordingly. However, suppose we simulate a country of millions
+of citizens. In that case, the specific value of $N$ does not matter
+much, as long as $N$ is big enough. A value of $N=50 000$ already
+yields results similar to higher values. During the sampling
+procedure, $N$ is the same for every sample.</p>
+<p>After the $N_{\rm samples}$ samples have been completed, we
+compute, for each day, the <strong>across-sample average</strong> of
+different quantities. Specifically, we consider the fraction of the
+population vaccinated, daily doses applied, the total number of doses
+received by the country, and the current number of doses in stock.
+Moreover, we also give <strong>confidence intervals</strong> for each
+of these quantities by computing the across-sample $\alpha$ and
+$1-\alpha$ quantiles.</p>
+
+<p>Reference <strong>real-world data</strong> for specific countries
+can be obtained from <a href="https://github.com/owid/covid-19-data">https://github.com/owid/covid-19-data</a>.</p>
+<p>
+
+
+
+
+</p>
+</body>
+</html>

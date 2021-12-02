@@ -100,11 +100,11 @@ def generate_population_controls():
             dcc.RangeSlider(
                 id="slider-pressure",
                 min=0.0,
-                max=10,
-                value=[2, 5],
-                marks={"0": "0%", "10": "10%"},
-                step=0.5,
-                pushable=0.5,
+                max=0.2,
+                value=[0.02, 0.05],
+                marks={"0": "0", "0.2": "0.2"},
+                step=0.005,
+                pushable=0.005,
                 tooltip={"placement": "bottom", "always_visible": False},
             ),
             dcc.Store(id="store-pressure", storage_type=storage_type),
@@ -177,7 +177,7 @@ def generate_sampling_controls():
             dcc.Store(id="store-nrep", storage_type=storage_type),
             # html.Br(),
             # html.Br(),
-            html.Div(id="output-N-value", style={'display':'none'}),
+            html.Div(id="output-N-value", style={"display": "none"}),
             dcc.Input(
                 id="input-N",
                 type="number",
@@ -186,7 +186,7 @@ def generate_sampling_controls():
                 max=1000000,
                 step=10,
                 debounce=False,
-                style={'display':'none'}
+                style={"display": "none"},
             ),
             dcc.Store(id="store-N", storage_type=storage_type),
             html.Br(),
@@ -268,46 +268,29 @@ def generate_plots_section():
 
 def generate_model_explanation():
 
-    s1 = """                        
-        The goal of the model is to capture the **main characteristics** of the **evolution** of an ongoing **vaccination campaign** on a specific population. To this end, the population is described as a sample of discrete **random variables** whose values change according to some **evolution rules**. The model is sampled using the **Monte Carlo method**, i.e., generating random numbers, which are used to simulate the evolution of the random variables over time.
-        """
-    s2 = """                        
-        The **population** is segmented into **three groups**, depending on their views on vaccines:
+    return html.Iframe(
+        src="assets/model_explanation.html", style={"height": "100vh", "width": "100%"}
+    )
+
+
+def generate_about():
+
+    s = """   
+        This project has been created by David Fernández Castellanos.
         
-        -   **Pro-vaccines**: they take the vaccine as soon as they have the chance
-        -   **Anti-vaccines**: they will never take a vaccine
-        -   **Agnostic**: they will initially hesitate, but given enough social pressure, they will take it
-        """
-    s3 = """ 
-        The **evolution of the vaccination** campaign is simulated by applying the following **rules** iteratively where **one iteration** corresponds to **one day**:
-        
-        1.  Every **non-vaccinated person** in the pro-vaccines group for whom a vaccine is available **becomes vaccinated**. A vaccine becomes available with a probability given by the number of vaccines in stock divided by the population size. That probability is multiplied by 2/7 to account for vaccinations occurring only two days a week, giving an effective per-day probability.
-        2.  Every **agnostic person** might **become pro-vaccines** with a probability equal to the number of vaccinated people divided by the population size. This probability is multiplied by a factor, denoted as pressure, which allows for tuning the strength of this effect. This mechanism is a proxy for **social pressure**, i.e., the higher the fraction of vaccinated people is, the higher the influence on non-vaccinated ones to do the same.
-        3.  The **stock of vaccines decreases** according to the number of people vaccinated during the day. Care is taken that, each day, no more vaccines than the available stock can be applied.
-        """
-    s4 = """                        
-        The **stock of vaccines is increased** once a week. We distinguish two stages:
-        
-        1.  Initially, the number of vaccines added to the stock each week **grows exponentially**, representing a fast production growth to meet the demand.
-        2.  When a specific **maximum delivery capacity** is reached, that amount does not grow anymore. Every subsequent week, that amount of vaccines are added to the existing stock.
+        ## Useful links:
+        -   The author's website: [https://www.davidfcastellanos.com](https://www.davidfcastellanos.com)                    
+        -   The source code of the web App and the model back-end: [https://github.com/kastellane/MonteCarlo-Vaccination-Model/](https://github.com/kastellane/MonteCarlo-Vaccination-Model/)
+        -   An associated blog post with extra information: [https://www.davidfcastellanos.com/covid-19-vaccination-model/](https://www.davidfcastellanos.com/covid-19-vaccination-model/)
+        -   Real world data: [https://github.com/owid/covid-19-data](https://github.com/owid/covid-19-data)
+            
         """
     return html.Div(
         id="text-explanation",
         children=[
-            html.Br(),
-            dcc.Markdown(s1),
-            html.Br(),
-            dcc.Markdown(s2),
-            html.Br(),
-            dcc.Markdown(s3),
-            html.Br(),
-            dcc.Markdown(s4),
+            dcc.Markdown(s),
         ],
     )
-
-
-def generate_model_help():
-    return
 
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -322,8 +305,8 @@ app.layout = html.Div(
             id="banner",
             className="banner",
             children=[
-                html.H3(
-                    "Monte Carlo model of COVID-19 vaccination",
+                html.H2(
+                    "Statistical modeling of COVID-19 vaccination",
                     style={"color": "#2c8cff"},
                 ),
             ],
@@ -397,8 +380,8 @@ app.layout = html.Div(
                             selected_style=tab_selected_style,
                         ),
                         dcc.Tab(
-                            label="Help",
-                            children=[generate_model_help()],
+                            label="About",
+                            children=[generate_about()],
                             style=tab_style,
                             selected_style=tab_selected_style,
                         ),
@@ -564,14 +547,14 @@ def update_figures(
         end_date = dt.strptime(date_range["end_date"].split("T")[0], "%Y-%m-%d")
 
         # if (nv_0_bounds[0]/100)*N < 1:
-            # msg_error = "WARNING: The initial stock of vaccines implies {0:.2f} vaccines initially available. Please, increase the lower bound for the initial stock or the population size so that 1 or more vaccines are available.".format((nv_0_bounds[0]/100)*N)
-            # return fig, None, msg_agnostics_pct, msg_error, model_results
+        # msg_error = "WARNING: The initial stock of vaccines implies {0:.2f} vaccines initially available. Please, increase the lower bound for the initial stock or the population size so that 1 or more vaccines are available.".format((nv_0_bounds[0]/100)*N)
+        # return fig, None, msg_agnostics_pct, msg_error, model_results
 
-        # # sliders use values 0-100
+        # some sliders use values 0-100
         params_combinations, p_soft_no_values = sample_param_combinations(
             np.array(p_pro_bounds) / 100,
             np.array(p_anti_bounds) / 100,
-            np.array(pressure_bounds) / 100,
+            np.array(pressure_bounds),
             np.array(tau_bounds),
             np.array(nv_0_bounds) / 100,
             np.array(nv_max_bounds) / 100,
@@ -682,7 +665,7 @@ def update_figures(
                     annotation=True,
                 )
 
-    fig.update_yaxes(range=[0, 100], row=1, col=1)
+    # fig.update_yaxes(range=[0, 100], row=1, col=1)
     fig.update_layout(margin=dict(l=0, r=0, b=0, t=50))  # height=400, width=1100)
 
     return fig, None, msg_agnostics_pct, msg_error, model_results
@@ -718,7 +701,7 @@ def update_output_div(values, data):
 )
 def update_output_div(values, data):
     data = values
-    return data, f"Pressure on the agnostics: {values[0]} - {values[1]}%"
+    return data, f"Pressure on the agnostics: {values[0]} - {values[1]}"
 
 
 @app.callback(
