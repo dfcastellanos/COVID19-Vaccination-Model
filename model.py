@@ -1,13 +1,17 @@
-"""
-    
-    License
-    -------
-    Copyright (C) 2021  - David Fernández Castellanos
-    
-    You can use this software, redistribute it, and/or modify it under the 
-    terms of the Creative Commons Attribution 4.0 International Public License.
-    
+"""    
+License
+-------
+Copyright (C) 2021  - David Fernández Castellanos
 
+You can use this software, redistribute it, and/or modify it under the 
+terms of the Creative Commons Attribution 4.0 International Public License.
+
+
+Explanation
+---------
+This module contains the statistical model of the COVID-19 vaccination campaign
+described in assets/model_explanation.html. Moreover, it also includes functions
+to sample the model's parameter space.
 """
 
 import numpy as np
@@ -21,6 +25,36 @@ from collections import defaultdict
 def run_single_realization(
     p_pro, p_anti, pressure, tau, nv_0, nv_max, max_day_number, N
 ):
+
+    """
+    Run a single realization of the statistical model of vaccination campaigns.
+    This single run corresponds to simulating the evolution of the vaccination campaign
+    as a function of time. See the assets/model_explanation.html for details on the model.
+
+    Parameters
+    ----------
+    p_pro : float
+        The probability that a certain person belongs to the pro-vaccines group
+    p_anti :  float
+        The probability that a specific person belongs to the anti-vaccines group
+    pressure : float
+        Strenght of the social pressure effect
+    tau : float
+        Duplication time of the weekly arriving vaccines
+    nv_0 : float
+        Initial stock of vaccines, measured as a fraction over the population size
+    nv_max : floa
+        Maximum weekly delivery capacity, measured as a fraction over the population size
+    max_day_number : int
+        Number of days that are going to be simulated
+    N : int
+        The population size
+
+    Returns
+    -------
+    Dictionary (key:string, value:list)
+        Dictionary with different data collected as a function of the day number
+    """
 
     assert p_pro + p_anti <= 1.0
     p_agnostics = 1 - (p_pro + p_anti)
@@ -99,7 +133,34 @@ def run_single_realization(
 
 
 @functools.lru_cache(maxsize=10)
-def run_model_sampling(params_sets, start_date, end_date, CI, N):
+def run_model_sampling(params, start_date, end_date, CI, N):
+
+    """
+    Sample the model's parameter space. For that, the model is run for
+    each input combination of parameters.
+
+    Parameters
+    ----------
+    params : tuple of tuples
+        Each of the tuples contain a combination of model parameters
+        (p_pro, p_anti, pressure, tau, nv_0, nv_max, max_day_number).
+        See run_single_realization for details.
+    start_date : datetime.datetime
+        Starting date
+    end_date : datetime.datetime
+        The last date at which the model run stops
+    CI : float
+        Value of the quantile used for establishing the confidence intervals
+    N : int
+        The population size
+
+    Returns
+    -------
+    Dictionary of dictionaries
+        Each dictionary key corresponds to the different quantities returned by run_single_realization.
+        Each of the values is another dictionary of lists that contains the mean of the quantity, its upper
+        and lower confidence intervals, and the dates associated with each list index.
+    """
 
     starting_time = time.time()
 
@@ -108,7 +169,7 @@ def run_model_sampling(params_sets, start_date, end_date, CI, N):
 
     data = defaultdict(list)
     number_finished_samples = 0
-    for p_pro, p_anti, pressure, tau, nv_0, nv_max in params_sets:
+    for p_pro, p_anti, pressure, tau, nv_0, nv_max in params:
         data_ = run_single_realization(
             p_pro, p_anti, pressure, tau, nv_0, nv_max, max_days, N
         )
@@ -173,18 +234,56 @@ def sample_param_combinations(
     n_rep,
 ):
 
+    """
+    Create a sample of parameter combinations. Each parameter
+    combination is created by drawing values from uniform distributions
+    with bounds defined by the function's arguments.
+
+    Parameters
+    ----------
+    p_pro_bounds : 2D-tuple of floats
+        Lower and upper bound for the probability that a certain person belongs to the pro-vaccines group
+    p_anti_bounds : 2D-tuple of floats
+        Lower and upper bound for the probability that a specific person belongs to the anti-vaccines group
+    pressure_bounds : 2D-tuple of floats
+        Lower and upper bound for the strength of the social pressure effect
+    tau_bounds : 2D-tuple of floats
+        Lower and upper bound for the duplication time of the weekly arriving vaccines
+    nv_0_bounds : 2D-tuple of floats
+        Lower and upper bound for the initial stock of vaccines measured as a fraction over the population size
+    nv_max_bounds : 2D-tuple of floats
+        Lower and upper bound for the maximum weekly delivery capacity measured as a fraction over the population size
+    n_rep : int
+        Number of parameter combination, i.e., number of random parameter samples drawn
+
+    Returns
+    -------
+    Tuple of tuples
+        Each of the tuples contain a combination of model parameters
+        (p_pro, p_anti, pressure, tau, nv_0, nv_max, max_day_number).
+    Tuple
+        The probability that a person belongs to the agnostics group
+    """
+
     params_combinations = list()
     p_soft_no_values = list()
     n = 0
     while len(params_combinations) < n_rep:
-        if n > n_rep * 10:
-            return None, None
-        else:
-            p_pro = np.random.uniform(p_pro_bounds[0], p_pro_bounds[1])
-            p_anti = np.random.uniform(p_anti_bounds[0], p_anti_bounds[1])
-            if p_pro + p_anti > 1.0:
-                n += 1
+
+        p_pro = np.random.uniform(p_pro_bounds[0], p_pro_bounds[1])
+        p_anti = np.random.uniform(p_anti_bounds[0], p_anti_bounds[1])
+        # use rejection sampling to ensure that p_anti + p_pro < 1
+        if p_pro + p_anti > 1.0:
+            # rejection
+            n += 1
+            if n > n_rep * 10:
+                # if the ammount of rejections is not too high, it means
+                # that given upper and lower bounds of p_anti and p_pro are
+                # mutually incompatible. Thus, we abort the parameter sampling
+                return None, None
+            else:
                 continue
+        else:
             pressure = np.random.uniform(pressure_bounds[0], pressure_bounds[1])
             tau = np.random.uniform(tau_bounds[0], tau_bounds[1])
             nv_0 = np.random.uniform(nv_0_bounds[0], nv_0_bounds[1])
