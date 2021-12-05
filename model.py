@@ -133,7 +133,7 @@ def run_single_realization(
 
 
 @functools.lru_cache(maxsize=10)
-def run_model_sampling(params, start_date, end_date, CI, N):
+def run_model_sampling(params, start_date, end_date, CI, N, max_running_time=None):
 
     """
     Sample the model's parameter space. For that, the model is run for
@@ -181,7 +181,7 @@ def run_model_sampling(params, start_date, end_date, CI, N):
         number_finished_samples += 1
 
         elapsed_time = time.time() - starting_time
-        if elapsed_time > 30:
+        if max_running_time is not None and elapsed_time > max_running_time:
             break
 
     # we work with numpy arrays since Dash Store cannot handle DataFarmes

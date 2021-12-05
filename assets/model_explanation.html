@@ -55,6 +55,7 @@ non-vaccinated people. Moreover, thanks to Monte Carlo sampling,
 uncertainty in the model parameters can be handled in a straighforward
 manner, allowing users to <strong>forecast worst and best-case scenarios</strong>.</p>
 
+<br>
 <h2>The model</h2>
 
 <h3>Population segments</h3>
@@ -170,11 +171,12 @@ n_{\rm agnos} &amp;= |n_{\rm pro}-n_{\rm
 anti}|
 \end{align*}</p>
 
-<h2>Sampling the model</h2>
+<br>
+<h2>Sampling the model's parameter space</h2>
 
-<p>The model is <strong>sampled</strong> <strong>a number</strong>
-$N_{\rm samples}$ of times, where each sample corresponds to applying
-the three steps above until reaching a maximum number of days. The
+<p>The model is run <strong>a number</strong>
+$N_{\rm samples}$ of times until reaching a certain
+maximum number of days. The
 model's <strong>free parameters</strong> are the initial stock of
 vaccines $n_{\rm stock,0}$, the vaccines duplication time in weeks
 $\tau$, the maximum weekly delivery capacity $\Delta n_{\rm max}$,

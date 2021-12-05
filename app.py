@@ -1,12 +1,10 @@
 """
-    
-    License
-    -------
-    Copyright (C) 2021  - David Fernández Castellanos
-    
-    You can use this software, redistribute it, and/or modify it under the 
-    terms of the Creative Commons Attribution 4.0 International Public License.
-    
+License
+-------
+Copyright (C) 2021  - David Fernández Castellanos
+
+You can use this software, redistribute it, and/or modify it under the 
+terms of the Creative Commons Attribution 4.0 International Public License.
 
 """
 
@@ -15,53 +13,18 @@ from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 from dash.dependencies import State, Input, Output
-import plotly.express as px
 import plotly.io as pio
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import numpy as np
-import pandas as pd
+import datetime
 from datetime import datetime as dt
 
-
-from model import run_model_sampling, sample_param_combinations
-
+from plot import get_country_data, run_model, plot_model_results, plot_country_data
 
 # pylint: disable=E0102
 
+title = "Statistical model of the COVID-19 vaccination campaign"
+
 pio.templates.default = "plotly_white"
-
-
-def get_country_data():
-
-    df = pd.read_csv(
-        "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations.csv"
-    )
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.sort_values(["location", "date"])
-
-    columns_to_keep = [
-        "location",
-        "date",
-        "people_vaccinated_per_hundred",
-        "daily_vaccinations_per_million",
-    ]
-
-    df = df.loc[:, columns_to_keep]
-
-    avail_countries = df["location"].unique()
-    country_data = pd.pivot_table(
-        df,
-        columns="location",
-        values=[
-            "people_vaccinated_per_hundred",
-            "daily_vaccinations_per_million",
-        ],
-        index="date",
-    )
-
-    return avail_countries, country_data
-
 
 avail_countries, country_data = get_country_data()
 
@@ -227,7 +190,7 @@ def generate_country_and_date_controls():
             dcc.DatePickerRange(
                 id="date-picker-select",
                 start_date=dt(2020, 12, 30),
-                end_date=dt.today(),
+                end_date=dt.today() + datetime.timedelta(days=90),
                 display_format="MMM Do, YY",
                 initial_visible_month=dt.today(),
             ),
@@ -290,7 +253,9 @@ def generate_about():
     s = """   
         This project has been created by David Fernández Castellanos.
         
-        ## Useful links:
+        You can use this software, redistribute it, and/or modify it under the terms of the Creative Commons Attribution 4.0 International Public License.
+        
+        ## Related links:
         -   The author's website: [https://www.davidfcastellanos.com](https://www.davidfcastellanos.com)                    
         -   The source code of the web App and the model back-end: [https://github.com/kastellane/COVID19-Vaccination-Model](https://github.com/kastellane/COVID19-Vaccination-Model)
         -   An associated blog post with extra information: [https://www.davidfcastellanos.com/covid-19-vaccination-model](https://www.davidfcastellanos.com/covid-19-vaccination-model)
@@ -300,13 +265,15 @@ def generate_about():
     return html.Div(
         id="text-explanation",
         children=[
+            html.Br(),
+            html.Br(),
             dcc.Markdown(s),
         ],
     )
 
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-
+app.title = title
 server = app.server
 
 app.layout = html.Div(
@@ -318,7 +285,7 @@ app.layout = html.Div(
             className="banner",
             children=[
                 html.H2(
-                    "Statistical modeling of COVID-19 vaccination",
+                    title,
                     style={"color": "#2c8cff"},
                 ),
             ],
@@ -406,51 +373,6 @@ app.layout = html.Div(
 )
 
 
-def add_line(
-    fig, x, y, color, name=None, row=1, col=1, fill="none", width=2, annotation=False
-):
-
-    # plot line
-
-    data = dict(
-        x=x,
-        y=y,
-        mode="lines",
-        fill=fill,
-        line_shape="spline",
-        showlegend=False,
-        line=dict(color=color, width=width),
-    )
-
-    if name is not None:
-        data["legendgroup"] = name
-        data["name"] = name
-
-    fig.add_trace(
-        go.Scatter(data),
-        row=row,
-        col=col,
-    )
-
-    # write annotation
-    if annotation:
-
-        fig.add_annotation(
-            xref="paper",
-            x=x[-1],
-            y=y[-1],
-            xanchor="left",
-            yanchor="middle",
-            text=name,
-            font=dict(family="Arial", size=14, color=color),
-            showarrow=False,
-            row=row,
-            col=col,
-        )
-
-    return fig
-
-
 @app.callback(
     # update graph and spinner
     Output("plot_grid", "figure"),
@@ -502,6 +424,7 @@ def update_figures(
     # model results
     model_results,
 ):
+
     # we can re-use previous model results if we must update the figure but
     # only the country selection changed. For that, we can check the callback
     # contex and see if the trigger was the run button being pressed. If not,
@@ -528,156 +451,34 @@ def update_figures(
     msg_agnostics_pct = "Agnosticts: "
     msg_error = ""
 
-    to_plot = [
-        "people_vaccinated_per_hundred",
-        "daily_vaccinations_per_million",
-        "cum_number_vac_received_per_hundred",
-        "vaccines_in_stock_per_hundred",
-    ]
-
-    fig = make_subplots(
-        rows=2,
-        cols=2,
-        subplot_titles=(
-            "People vaccinated per hundred",
-            "Daily vaccinations per million",
-            "Vaccines received per hundred",
-            "Vaccines in stock per hundred",
-        ),
-        horizontal_spacing=0.08,
-        vertical_spacing=0.15,
-    )
-
-    colors = px.colors.qualitative.Safe
-
     # check n_clicks to make sure that the run button has already been pressed once
     if update_model and n_clicks is not None:
 
-        # ---- sample the model with the selected parameters ----
+        max_running_time = 30
 
-        start_date = dt.strptime(date_range["start_date"].split("T")[0], "%Y-%m-%d")
-        end_date = dt.strptime(date_range["end_date"].split("T")[0], "%Y-%m-%d")
-
-        # if (nv_0_bounds[0]/100)*N < 1:
-        # msg_error = "WARNING: The initial stock of vaccines implies {0:.2f} vaccines initially available. Please, increase the lower bound for the initial stock or the population size so that 1 or more vaccines are available.".format((nv_0_bounds[0]/100)*N)
-        # return fig, None, msg_agnostics_pct, msg_error, model_results
-
-        # some sliders use values 0-100
-        params_combinations, p_soft_no_values = sample_param_combinations(
-            np.array(p_pro_bounds) / 100,
-            np.array(p_anti_bounds) / 100,
-            np.array(pressure_bounds),
-            np.array(tau_bounds),
-            np.array(nv_0_bounds) / 100,
-            np.array(nv_max_bounds) / 100,
+        model_results, msg_error, msg_agnostics_pct = run_model(
+            # populatio parameters
+            p_pro_bounds,
+            p_anti_bounds,
+            pressure_bounds,
+            # vaccinations parameters
+            tau_bounds,
+            nv_0_bounds,
+            nv_max_bounds,
+            # samping
+            CI,
             n_rep,
+            N,
+            date_range,
+            max_running_time,
         )
 
-        if params_combinations is not None:
-            # evaluate the agnostics population from the pro and anti vaccines samples
-            p_soft_no_values = 100 * np.array(p_soft_no_values)
-            a = max(np.mean(p_soft_no_values) - np.std(p_soft_no_values), 0)
-            b = np.mean(p_soft_no_values) + np.std(p_soft_no_values)
-            a_str = "{0:.0f}".format(a)
-            b_str = "{0:.0f}".format(b)
-            # if the uncertainty interval is smaller than 1%, report one value instead of the interval
-            if abs(a - b) < 1:
-                msg_agnostics_pct += a_str + "%"
-            else:
-                msg_agnostics_pct += a_str + " - " + b_str + "%"
-        else:
-            msg_error = "ERROR: The pertentages of pro- and anti-vaccines are simultaneously too high. Please reduce them."
-            return fig, None, msg_agnostics_pct, msg_error, model_results
+    fig = plot_model_results(model_results, CI)
 
-        model_results = run_model_sampling(
-            params_combinations, start_date, end_date, CI / 100, N
-        )
+    initialized = model_results is None
+    plot_country_data(fig, selected_countries, country_data, initialized)
 
-        number_finished_samples = model_results["number_finished_samples"]
-        if number_finished_samples < len(params_combinations):
-            msg_error = f"ERROR: Maximum computation time of 30s exceeded. Only {number_finished_samples} of the desired {len(params_combinations)} Monte Carlo runs were performed."
-
-    for n, k in enumerate(to_plot):
-
-        i, j = np.unravel_index(n, [2, 2])
-        i += 1
-        j += 1
-
-        # ---- plot model results ----
-        # the first automatic call will have no stored model_results and it will be None
-
-        if model_results is not None:
-            df = model_results[k]
-            fig = add_line(
-                fig,
-                df["dates"],
-                df["mean"],
-                "royalblue",
-                "Model",
-                i,
-                j,
-                annotation=True,
-            )
-            fig = add_line(
-                fig,
-                df["dates"],
-                df["upper"],
-                colors[0],
-                f"Model CI={CI}%",
-                i,
-                j,
-                width=0,
-                annotation=False,
-            )
-            fig = add_line(
-                fig,
-                df["dates"],
-                df["lower"],
-                colors[0],
-                f"Model CI={CI}%",
-                i,
-                j,
-                width=0,
-                fill="tonexty",
-                annotation=False,
-            )
-
-        # ----- add curves with data from the selected countries ----
-        if k in country_data.columns:
-            df = country_data[k]
-            for ncolor, country in enumerate(selected_countries):
-                g = df[country].dropna()
-                fig = add_line(
-                    fig,
-                    g.index,
-                    g,
-                    colors[ncolor + 1],
-                    country,
-                    i,
-                    j,
-                    width=1,
-                    annotation=True,
-                )
-        else:
-            # Some of the results that we obtain from the model do not have equivalent real world data.
-            # This causes some plots not to show up initially, until the model has ben run at least once.
-            # If model results are not yet available, we place a 'no data' annotation in those plots.
-            # That will make Plotly draw the axes so the user will be aware of them from the begining.
-            if model_results is None:
-
-                fig = add_line(
-                    fig,
-                    [0],
-                    [0],
-                    colors[0],
-                    "No data to show",
-                    i,
-                    j,
-                    width=1,
-                    annotation=True,
-                )
-
-    # fig.update_yaxes(range=[0, 100], row=1, col=1)
+    fig.update_yaxes(range=[0, 100], row=1, col=1)
     fig.update_layout(margin=dict(l=0, r=0, b=0, t=50))  # height=400, width=1100)
 
     return fig, None, msg_agnostics_pct, msg_error, model_results
