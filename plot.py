@@ -3,6 +3,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import argparse
+from argparse import RawTextHelpFormatter
 
 from model import sample_param_combinations, run_model_sampling
 
@@ -226,10 +228,6 @@ def run_model(
     msg_agnostics_pct = "Agnosticts: "
     msg_error = ""
 
-    # if (nv_0_bounds[0]/100)*N < 1:
-    # msg_error = "WARNING: The initial stock of vaccines implies {0:.2f} vaccines initially available. Please, increase the lower bound for the initial stock or the population size so that 1 or more vaccines are available.".format((nv_0_bounds[0]/100)*N)
-    # return fig, None, msg_agnostics_pct, msg_error, model_results
-
     # some sliders use values 0-100
     params_combinations, p_soft_no_values = sample_param_combinations(
         np.array(p_pro_bounds) / 100,
@@ -274,22 +272,151 @@ def run_model(
     return model_results, msg_error, msg_agnostics_pct
 
 
+class SplitArgsStr(argparse.Action):
+    def __call__(self, parser, namespace, values_str, option_string=None):
+        values = values_str.split(",")
+        # If ',' is not in the string, the input corresponds to a single value.
+        # Create list of two values with it.
+        if len(values) == 1:
+            values += values
+        setattr(namespace, self.dest, values)
+
+
+class SplitArgsFloat(argparse.Action):
+    def __call__(self, parser, namespace, values_str, option_string=None):
+        values = [float(x) for x in values_str.split(",")]
+        # If ',' is not in the string, the input corresponds to a single value.
+        # Create list of two values with it.
+        if len(values) == 1:
+            values += values
+        setattr(namespace, self.dest, values)
+
+
 def main():
 
+    description = """  
+    This program performs a Monte Carlo sampling of a statistical model of the
+    COVID-19 vaccination campaign (you can find a detailed explanation of
+    the model in assets/model_explanation.html). 
+    
+    In each Monte Carlo run, the value of each parameter is drawn from a uniform
+    probability distribution. The bounds of each distribution are defined in the
+    command line call as comma-separated strings for each parameter. If instead
+    of a comma-separated string, a single value is given, that parameter will 
+    assume in every Monte Carlo run exactly that specific value.
+    
+    When the sampling is complete, the results are automatically rendered as an
+    interactive plot in your default internet browser.
+    
+    Example call: 
+        'python plot.py --pro=30,40 --anti=17,40 --pressure=0.02,0.025 --dupl_time=3,4 --init_stock=0.2,0.24 --max_delivery=10,10 --date_range=2020-12-30,2021-12-1'
+   
+    Author: David Fernández Castellanos.
+
+    Related links:
+    - The author's website: https://www.davidfcastellanos.com
+    - The source code: https://github.com/kastellane/COVID19-Vaccination-Model
+    - A web app version: https://covid19-vaccination-app.davidfcastellanos.com
+    - An associated blog post: https://www.davidfcastellanos.com/covid-19-vaccination-model    
+    """
+
+    parser = argparse.ArgumentParser(
+        description=description, formatter_class=RawTextHelpFormatter
+    )
+
+    parser.add_argument(
+        "--pro",
+        type=str,
+        help="comma-separated upper and lower bounds for the probability that a certain person belongs to the pro-vaccines group",
+        default="30,40",
+        action=SplitArgsFloat,
+        required=True,
+    )
+
+    parser.add_argument(
+        "--anti",
+        type=str,
+        help="comma-separated upper and lower bounds for the probability that a specific person belongs to the anti-vaccines group",
+        default="30,40",
+        action=SplitArgsFloat,
+        required=True,
+    )
+
+    parser.add_argument(
+        "--pressure",
+        type=str,
+        help="comma-separated upper and lower bounds for the strenght of the social pressure effect",
+        default="0.02,0.025",
+        action=SplitArgsFloat,
+        required=True,
+    )
+
+    parser.add_argument(
+        "--dupl_time",
+        type=str,
+        help="comma-separated upper and lower bounds for the duplication time of the weekly arriving vaccines",
+        default="3,4",
+        action=SplitArgsFloat,
+        required=True,
+    )
+
+    parser.add_argument(
+        "--init_stock",
+        type=str,
+        help="comma-separated upper and lower bounds for the initial stock of vaccines, measured as a percentege of the population size",
+        default="0.2,0.2",
+        action=SplitArgsFloat,
+        required=True,
+    )
+
+    parser.add_argument(
+        "--max_delivery",
+        type=str,
+        help="comma-separated upper and lower bounds for the maximum weekly delivery capacity, measured as a percentage over the population size",
+        default="10,10",
+        action=SplitArgsFloat,
+        required=True,
+    )
+
+    parser.add_argument(
+        "--mc_samples",
+        type=int,
+        help="number of Monte Carlo samples",
+        default="100",
+    )
+
+    parser.add_argument(
+        "--date_range",
+        type=str,
+        help="comma-separated starting and ending dates",
+        default="2020-12-30,2021-12-1",
+        action=SplitArgsStr,
+        required=True,
+    )
+
+    parser.add_argument(
+        "--CI",
+        type=float,
+        help="value of the quantile used for establishing the confidence intervals",
+        default="0.95",
+    )
+
+    args = vars(parser.parse_args())
+
     # populatio parameters
-    p_pro_bounds = [30, 40]
-    p_anti_bounds = [30, 40]
-    pressure_bounds = [0.02, 0.02]
+    p_pro_bounds = args["pro"]
+    p_anti_bounds = args["anti"]
+    pressure_bounds = args["pressure"]
     # vaccinations parameters
-    tau_bounds = [4, 4]
-    nv_0_bounds = [0.2, 0.2]
-    nv_max_bounds = [10, 10]
+    tau_bounds = args["dupl_time"]
+    nv_0_bounds = args["init_stock"]
+    nv_max_bounds = args["max_delivery"]
     # samping
-    n_rep = 100
+    n_rep = args["mc_samples"]
     N = 50000
-    start_date = "2020-12-30"
-    end_date = "2021-12-1"
-    CI = 0.95
+    start_date = args["date_range"][0]
+    end_date = args["date_range"][1]
+    CI = args["CI"]
 
     date_range = dict(start_date=start_date, end_date=end_date)
 
@@ -309,11 +436,14 @@ def main():
         date_range,
     )
 
-    fig = plot_model_results(model_results, CI)
+    if msg_error != "":
+        print(msg_error)
+    else:
+        fig = plot_model_results(model_results, CI)
+        # plot_country_data(fig, selected_countries, country_data)
+        fig.show(renderer="browser")
 
-    # plot_country_data(fig, selected_countries, country_data)
-
-    fig.show(renderer="browser")
+    return
 
 
 if __name__ == "__main__":
