@@ -24,8 +24,7 @@ Vaccination campaigns can be regarded as relatively simple to model from a stati
 These points are the main reasons that make the COVID-19 vaccination campaign special from a statistical modeling perspective.  
 
 ## The model
-The model and the sampling procedure are explained in detail in `assets/model_explanation.html`.
-
+You can find a detailed explanation of the model and the sampling procedure in `assets/model_explanation.html` or in [this blog post](https://www.davidfcastellanos.com/covid-19-vaccination-model).
 
 ## How to run it
 
