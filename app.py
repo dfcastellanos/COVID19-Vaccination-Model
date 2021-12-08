@@ -18,7 +18,8 @@ import numpy as np
 import datetime
 from datetime import datetime as dt
 
-from plot import get_country_data, run_model, plot_model_results, plot_country_data
+from model import run_model
+from plot import get_country_data, plot_model_results, plot_country_data
 
 # pylint: disable=E0102
 

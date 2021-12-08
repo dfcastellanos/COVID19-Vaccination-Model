@@ -49,7 +49,7 @@ The commands are:
 
 This example call reproduces the results shown in the picture above:
 	
-	python plot.py --pro=35,45 --anti=12,25 --pressure=0.,0.02 --dupl_time=5,7 --init_stock=1,1.2 --max_delivery=5,10 --date_range=2020-12-15,2022-07-1
+	python model.py --pro=35,45 --anti=12,25 --pressure=0.,0.02 --dupl_time=5,7 --init_stock=1,1.2 --max_delivery=5,10 --date_range=2020-12-15,2022-07-1
 
 ## Documentation
 The source files are fully documented with docstrings.
