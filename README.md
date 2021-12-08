@@ -58,7 +58,6 @@ The source files are fully documented with docstrings.
 
 -   The author's website: [https://www.davidfcastellanos.com](https://www.davidfcastellanos.com)
 -   An interactive web App version: [https://covid19-vaccination-app.davidfcastellanos.com](https://covid19-vaccination-app.davidfcastellanos.com)
--   The source code of the web App and the model back-end: [https://github.com/kastellane/COVID19-Vaccination-Model](https://github.com/kastellane/COVID19-Vaccination-Model)
 -   An associated blog post with extra information: [https://www.davidfcastellanos.com/covid-19-vaccination-model](https://www.davidfcastellanos.com/covid-19-vaccination-model)
 -   Real world data: [https://github.com/owid/covid-19-data](https://github.com/owid/covid-19-data)
 
