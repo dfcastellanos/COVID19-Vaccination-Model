@@ -27,9 +27,11 @@ These points are the main reasons that make the COVID-19 vaccination campaign sp
 The model and the sampling procedure are explained in detail in `assets/model_explanation.html`.
 
 
-## Command-line interface
+## How to run it
 
-The commands are:
+To run the model, you need to first install the dependencies defined in the file `requirements.txt`. You can do it by calling `make install`. It is recommended that before doing that, you create a Python virtual environment. This can be done as `python3 -m venv .myvirtenv` and activated as `source .myvirtenv/bin/activate`.
+
+The model be called from the command-line interface. The commands are:
 
 	  -h, --help            show this help message and exit
 	  --pro PRO             comma-separated upper and lower bounds for the probability that a certain person belongs to the pro-vaccines group
@@ -50,6 +52,8 @@ The commands are:
 This example call reproduces the results shown in the picture above:
 	
 	python model.py --pro=35,45 --anti=12,25 --pressure=0.,0.02 --dupl_time=5,7 --init_stock=1,1.2 --max_delivery=5,10 --date_range=2020-12-15,2022-07-1
+
+Alternatively, instead of running it in your machine you can interact with the model in [this web App](https://covid19-vaccination-app.davidfcastellanos.com).
 
 ## Documentation
 The source files are fully documented with docstrings.
