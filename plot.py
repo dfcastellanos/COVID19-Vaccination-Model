@@ -316,7 +316,7 @@ def main():
     Related links:
     - The author's website: https://www.davidfcastellanos.com
     - The source code: https://github.com/kastellane/COVID19-Vaccination-Model
-    - A web app version: https://covid19-vaccination-app.davidfcastellanos.com
+    - An interactive web app version: https://covid19-vaccination-app.davidfcastellanos.com
     - An associated blog post: https://www.davidfcastellanos.com/covid-19-vaccination-model    
     """
 
