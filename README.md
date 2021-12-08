@@ -7,9 +7,7 @@ This **statistical model** reproduces the characteristics of the evolution of th
 
 This is an example of the model results, in this case optimized to reproduce the vaccination campaign in USA between the beginning of the campaign till the end of 2021:
 
-<p align="center">
-<img src="https://user-images.githubusercontent.com/5737365/144921956-da822382-1631-4c40-b409-0c762a2d66f5.jpg" alt="drawing" width="80%"/>
-<p align="center">
+![image](https://user-images.githubusercontent.com/5737365/144921956-da822382-1631-4c40-b409-0c762a2d66f5.jpg)
 
 <p align="center"><i>
 The model results are shown in blue, where the shaded region contains 95% of the sampled data. The results are optimized to reproduce the USA vaccination campaign (in red). The real-world data is obtained from Our World in Data.
