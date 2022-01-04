@@ -253,9 +253,7 @@ def generate_about():
 
     s = """   
         This project has been created by David Fernández Castellanos.
-        
-        You can use this software, redistribute it, and/or modify it under the terms of the Creative Commons Attribution 4.0 International Public License.
-        
+                
         ## Related links:
         -   The author's website: [https://www.davidfcastellanos.com](https://www.davidfcastellanos.com)                    
         -   The source code of the web App and the model back-end: [https://github.com/kastellane/COVID19-Vaccination-Model](https://github.com/kastellane/COVID19-Vaccination-Model)
