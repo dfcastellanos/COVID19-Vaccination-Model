@@ -217,7 +217,7 @@ def run_sampling(params, start_date, end_date, CI, N, max_running_time=None):
     data_CI = defaultdict(dict)
     for k in data.keys():
         samples = data[k]["samples"]
-        quantiles = np.quantile(samples, [1 - CI, CI], axis=0)
+        quantiles = np.quantile(samples, [(1 - CI)/2., (1 + CI)/2.], axis=0)
         data_CI[k]["upper"] = quantiles[1]
         data_CI[k]["lower"] = quantiles[0]
         data_CI[k]["mean"] = samples.mean(axis=0)
