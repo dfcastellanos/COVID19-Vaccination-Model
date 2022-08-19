@@ -1,7 +1,7 @@
 
 # Statistical model of the COVID-19 vaccination campaign
 
-(NOTE: an **interactive web App** version of this model can be found [here](https://covid19-vaccination-app.davidfcastellanos.com))
+(NOTE: an **interactive web App** version of this model can be found [here](https://covid19-vaccination-app.dfcastellanos.com))
 
 This **statistical model** reproduces the characteristics of the evolution of the ongoing COVID-19 **vaccination campaign** in specific countries. With it, the user can test the effects of different vaccine production and **delivery rates**, the segmentation of the population into **pro- and anti-vaccines**, and the impact of **social pressure** on non-vaccinated people. Moreover, the model can handle uncertainty in the parameters, allowing the user to consider **worst and best-case scenarios**.
 
@@ -24,7 +24,7 @@ Vaccination campaigns can be regarded as relatively simple to model from a stati
 These points are the main reasons that make the COVID-19 vaccination campaign special from a statistical modeling perspective.  
 
 ## The model
-You can find a detailed explanation of the model and the sampling procedure in `assets/model_explanation.html` or in [this blog post](https://www.davidfcastellanos.com/covid-19-vaccination-model).
+You can find a detailed explanation of the model and the sampling procedure in `assets/model_explanation.html` or in [this blog post](https://www.dfcastellanos.com/covid-19-vaccination-model).
 
 ## How to run it
 
@@ -52,16 +52,16 @@ This example call reproduces the results shown in the picture above:
 	
 	python model.py --pro=35,45 --anti=12,25 --pressure=0.,0.02 --dupl_time=5,7 --init_stock=1,1.2 --max_delivery=5,10 --date_range=2020-12-15,2022-07-1
 
-Alternatively, instead of running it in your machine you can interact with the model in [this web App](https://covid19-vaccination-app.davidfcastellanos.com).
+Alternatively, instead of running it in your machine you can interact with the model in [this web App](https://covid19-vaccination-app.dfcastellanos.com).
 
 ## Documentation
 The source files are fully documented with docstrings.
 
 ## Related links
 
--   The author's website: [https://www.davidfcastellanos.com](https://www.davidfcastellanos.com)
--   An interactive web App version: [https://covid19-vaccination-app.davidfcastellanos.com](https://covid19-vaccination-app.davidfcastellanos.com)
--   An associated blog post with extra information: [https://www.davidfcastellanos.com/covid-19-vaccination-model](https://www.davidfcastellanos.com/covid-19-vaccination-model)
+-   The author's website: [https://www.dfcastellanos.com](https://www.dfcastellanos.com)
+-   An interactive web App version: [https://covid19-vaccination-app.dfcastellanos.com](https://covid19-vaccination-app.dfcastellanos.com)
+-   An associated blog post with extra information: [https://www.dfcastellanos.com/covid-19-vaccination-model](https://www.dfcastellanos.com/covid-19-vaccination-model)
 -   Real world data: [https://github.com/owid/covid-19-data](https://github.com/owid/covid-19-data)
 
 ## License
